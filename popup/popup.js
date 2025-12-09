@@ -346,12 +346,12 @@ function attachTabClickListeners() {
 // Focus a tab
 async function focusTab(tabId, windowId) {
     try {
-        // Focus the window first
-        await chrome.windows.update(windowId, { focused: true });
-        // Then activate the tab
+        // Activate the tab first
         await chrome.tabs.update(tabId, { active: true });
-        // Close popup
-        window.close();
+        // Then focus the window
+        await chrome.windows.update(windowId, { focused: true });
+        // Close popup after a brief delay to ensure tab switch completes
+        setTimeout(() => window.close(), 50);
     } catch (error) {
         console.error('Error focusing tab:', error);
     }
