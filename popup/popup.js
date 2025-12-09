@@ -606,11 +606,96 @@ function setupEventListeners() {
     // Group by window toggle
     document.getElementById('groupByWindowBtn').addEventListener('click', () => {
         groupByWindow = !groupByWindow;
-        document.getElementById('groupByWindowBtn').classList.toggle('active', groupByWindow);
         renderTabsList();
+
+        // Update button state
+        document.getElementById('groupByWindowBtn').style.opacity = groupByWindow ? '1' : '0.5';
+    });
+
+    // Merge duplicate tabs button
+    document.getElementById('mergeDuplicatesBtn').addEventListener('click', async () => {
+        await mergeDuplicateTabs();
     });
 }
 
+// Merge duplicate tabs (same URL)
+async function mergeDuplicateTabs() {
+    try {
+        // Group tabs by URL
+        const urlGroups = {};
+        allTabs.forEach(tab => {
+            // Normalize URL (remove hash and some query params)
+            let normalizedUrl = tab.url;
+            try {
+                const url = new URL(tab.url);
+                // Remove hash
+                url.hash = '';
+                normalizedUrl = url.toString();
+            } catch (e) {
+                // Use original URL if parsing fails
+            }
+
+            if (!urlGroups[normalizedUrl]) {
+                urlGroups[normalizedUrl] = [];
+            }
+            urlGroups[normalizedUrl].push(tab);
+        });
+
+        // Find duplicates (groups with more than 1 tab)
+        const duplicateGroups = Object.values(urlGroups).filter(group => group.length > 1);
+
+        if (duplicateGroups.length === 0) {
+            // Show brief feedback - no duplicates
+            const btn = document.getElementById('mergeDuplicatesBtn');
+            const originalTitle = btn.title;
+            btn.title = 'No duplicates found!';
+            btn.style.opacity = '0.5';
+            setTimeout(() => {
+                btn.title = originalTitle;
+                btn.style.opacity = '1';
+            }, 2000);
+            return;
+        }
+
+        // For each duplicate group, keep the most recently active tab and close the rest
+        let closedCount = 0;
+        const tabsToClose = [];
+
+        duplicateGroups.forEach(group => {
+            // Sort by active status first, then by id (newer tabs have higher ids)
+            group.sort((a, b) => {
+                if (a.active && !b.active) return -1;
+                if (!a.active && b.active) return 1;
+                return b.id - a.id; // Keep most recent (highest id)
+            });
+
+            // Keep the first tab (active or most recent), close the rest
+            const toClose = group.slice(1);
+            tabsToClose.push(...toClose.map(t => t.id));
+            closedCount += toClose.length;
+        });
+
+        // Close duplicate tabs
+        if (tabsToClose.length > 0) {
+            await chrome.tabs.remove(tabsToClose);
+
+            // Show feedback
+            const btn = document.getElementById('mergeDuplicatesBtn');
+            const originalTitle = btn.title;
+            btn.title = `Closed ${closedCount} duplicate tab${closedCount === 1 ? '' : 's'}!`;
+            btn.style.color = 'var(--macos-green)';
+            setTimeout(() => {
+                btn.title = originalTitle;
+                btn.style.color = '';
+            }, 2000);
+
+            // Reload tabs list
+            await loadAllTabs();
+        }
+    } catch (error) {
+        console.error('Error merging duplicates:', error);
+    }
+}
 // Format time in MM:SS
 function formatTime(seconds) {
     if (seconds < 0) return '0:00';

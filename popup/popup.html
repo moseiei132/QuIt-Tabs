@@ -122,12 +122,20 @@
     <section class="tabs-section">
       <div class="section-header">
         <h2>All Tabs (<span id="tabCount">0</span>)</h2>
-        <button id="groupByWindowBtn" class="toggle-btn">
-          <svg width="12" height="12">
-            <use href="#icon-folder" />
-          </svg>
-          Group
-        </button>
+        <div class="section-actions">
+          <button id="mergeDuplicatesBtn" class="toggle-btn" title="Merge Duplicate Tabs">
+            <svg width="12" height="12">
+              <use href="#icon-merge" />
+            </svg>
+            Merge
+          </button>
+          <button id="groupByWindowBtn" class="toggle-btn">
+            <svg width="12" height="12">
+              <use href="#icon-folder" />
+            </svg>
+            Window
+          </button>
+        </div>
       </div>
       <div id="tabsList" class="tabs-list">
         <div class="loading">Loading tabs...</div>

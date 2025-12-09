@@ -371,6 +371,12 @@ svg use {
   padding: 10px 16px;
   background: var(--macos-bg);
   border-bottom: 0.5px solid var(--macos-divider);
+  margin-bottom: 12px;
+}
+
+.section-actions {
+  display: flex;
+  gap: 6px;
 }
 
 .section-header h2 {
