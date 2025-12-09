@@ -11,6 +11,9 @@ A Chrome extension that automatically closes inactive tabs after a configurable 
 - 🎯 **8 Exclusion Rule Types** - Granular control over what gets protected
 - 📊 **Real-time Display** - See countdown timers for all tabs at a glance
 - 🛡️ **Flexible Protection** - Never close important tabs
+- 🖱️ **Drag-and-Drop** - Reorder tabs or move between windows by dragging
+- 🔀 **Merge Duplicates** - One-click to close duplicate tabs (same URL)
+- 👆 **Click to Switch** - Click any tab in the list to instantly switch to it
 
 ### Exclusion Rules
 Protect tabs from auto-closing with powerful pattern matching:
