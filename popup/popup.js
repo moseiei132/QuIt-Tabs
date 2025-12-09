@@ -340,7 +340,115 @@ function attachTabClickListeners() {
             const windowId = parseInt(item.dataset.windowId);
             await focusTab(tabId, windowId);
         });
+
+        // Add drag and drop
+        attachDragHandlers(item);
     });
+}
+
+// Attach drag-and-drop handlers to tab items
+function attachDragHandlers(item) {
+    item.setAttribute('draggable', 'true');
+
+    item.addEventListener('dragstart', (e) => {
+        e.stopPropagation();
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', item.dataset.tabId);
+    });
+
+    item.addEventListener('dragend', (e) => {
+        e.stopPropagation();
+        item.classList.remove('dragging');
+        document.querySelectorAll('.tab-item').forEach(i => i.classList.remove('drag-over'));
+    });
+
+    item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'move';
+
+        const draggingItem = document.querySelector('.dragging');
+        if (draggingItem && draggingItem !== item) {
+            item.classList.add('drag-over');
+        }
+    });
+
+    item.addEventListener('dragleave', (e) => {
+        e.stopPropagation();
+        item.classList.remove('drag-over');
+    });
+
+    item.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        item.classList.remove('drag-over');
+
+        const draggedTabId = parseInt(e.dataTransfer.getData('text/plain'));
+        const targetTabId = parseInt(item.dataset.tabId);
+        const targetWindowId = parseInt(item.dataset.windowId);
+
+        if (draggedTabId === targetTabId) return;
+
+        await moveTab(draggedTabId, targetTabId, targetWindowId);
+    });
+}
+
+// Move tab to new position or window
+async function moveTab(draggedTabId, targetTabId, targetWindowId) {
+    try {
+        const draggedTab = allTabs.find(t => t.id === draggedTabId);
+        const targetTab = allTabs.find(t => t.id === targetTabId);
+
+        if (!draggedTab || !targetTab) return;
+
+        const draggedWindowId = draggedTab.windowId;
+        const sameWindow = draggedWindowId === targetWindowId;
+
+        if (sameWindow) {
+            // Reorder within same window
+            const targetIndex = targetTab.index;
+            await chrome.tabs.move(draggedTabId, { index: targetIndex });
+        } else {
+            // Move to different window
+            const targetIndex = targetTab.index;
+            await chrome.tabs.move(draggedTabId, {
+                windowId: targetWindowId,
+                index: targetIndex
+            });
+
+            // Check if source window is now empty and close it
+            await cleanupEmptyWindow(draggedWindowId);
+        }
+
+        // Reload tabs list
+        await loadAllTabs();
+    } catch (error) {
+        console.error('Error moving tab:', error);
+    }
+}
+
+// Clean up empty windows (with only new tab page)
+async function cleanupEmptyWindow(windowId) {
+    try {
+        const tabs = await chrome.tabs.query({ windowId });
+
+        // If window has only 1 tab and it's a new tab page, close the window
+        if (tabs.length === 1) {
+            const tab = tabs[0];
+            const isEmptyTab = tab.url === 'chrome://newtab/' ||
+                tab.url === 'about:blank' ||
+                tab.url === 'edge://newtab/' ||
+                tab.url === 'brave://newtab/';
+
+            if (isEmptyTab) {
+                await chrome.windows.remove(windowId);
+            }
+        }
+    } catch (error) {
+        // Window might already be closed, ignore
+        console.log('Window cleanup skipped:', error);
+    }
 }
 
 // Focus a tab
