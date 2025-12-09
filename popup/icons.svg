@@ -64,5 +64,12 @@
   <!-- Check/Checkmark Icon -->
   <symbol id="icon-check" viewBox="0 0 24 24">
     <polyline points="20 6 9 17 4 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>  
+  <!-- Merge icon -->
+  <symbol id="icon-merge" viewBox="0 0 16 16">
+    <path fill="currentColor" d="M8 2L6 4h4L8 2z"/>
+    <path fill="currentColor" d="M4 6h3v8H4V6z"/>
+    <path fill="currentColor" d="M9 6h3v8H9V6z"/>
+    <path fill="currentColor" d="M2 13h12v1H2v-1z"/>
   </symbol>
 </svg>
