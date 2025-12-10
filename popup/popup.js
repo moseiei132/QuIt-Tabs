@@ -150,7 +150,7 @@ function updateCurrentTabCountdown() {
         return;
     }
 
-    if (state.paused) {
+    if (state.paused || (state.hasMedia && settings.pauseOnMedia)) {
         timeEl.textContent = '⏸ ' + formatTime(state.countdown);
         countdownEl.className = 'countdown';
         return;
@@ -282,7 +282,8 @@ function renderTabItem(tab) {
             countdown = '∞';
             countdownLabel = 'Safe';
             countdownClass = 'excluded';
-        } else if (state.paused) {
+        } else if (state.paused || (state.hasMedia && settings.pauseOnMedia)) {
+            // Show paused if manually paused OR if media is playing with pauseOnMedia enabled
             countdown = '⏸';
             countdownLabel = 'Paused';
             countdownClass = '';
@@ -303,7 +304,7 @@ function renderTabItem(tab) {
         badges.push('<span class="badge badge-pinned">Pinned</span>');
     }
     if (tab.audible) {
-        badges.push('<span class="badge badge-media">🔊</span>');
+        badges.push('<span class="badge badge-media"><svg width="10" height="10"><use href="#icon-play" /></svg></span>');
     }
 
     const title = tab.title || 'Untitled';
@@ -480,7 +481,8 @@ function updateCountdowns() {
 
         if (!state || state.countdown === null) return;
 
-        if (state.paused) {
+        if (state.paused || (state.hasMedia && settings.pauseOnMedia)) {
+            // Show paused icon if manually paused OR media is playing
             timeEl.textContent = '⏸';
             return;
         }
