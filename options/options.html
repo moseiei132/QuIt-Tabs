@@ -135,6 +135,49 @@
             </div>
         </section>
 
+        <!-- Website Presets -->
+        <section class="section">
+            <h2>Website Presets</h2>
+            <p class="setting-description">Custom labels for exclusion rules based on the website (e.g., "Just this
+                video" on YouTube)</p>
+
+            <div class="preset-info">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Remote Version:</span>
+                        <span id="presetVersion" class="info-value">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Last Updated:</span>
+                        <span id="presetLastUpdate" class="info-value">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Last Fetched:</span>
+                        <span id="presetLastFetch" class="info-value">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Cached Presets:</span>
+                        <span id="presetCount" class="info-value">—</span>
+                    </div>
+                </div>
+
+                <div class="preset-actions">
+                    <button id="refreshPresetsBtn" class="btn btn-primary">
+                        <svg width="14" height="14" style="margin-right: 4px; vertical-align: middle;">
+                            <path d="M13 7a6 6 0 11-1.8-4.3L10 4" stroke="currentColor" stroke-width="2" fill="none"
+                                stroke-linecap="round" />
+                            <path d="M10 1v3h3" stroke="currentColor" stroke-width="2" fill="none"
+                                stroke-linecap="round" />
+                        </svg>
+                        Refresh Presets
+                    </button>
+                    <button id="clearPresetCacheBtn" class="btn btn-secondary">Clear Cache</button>
+                </div>
+
+                <p class="preset-status" id="presetStatus"></p>
+            </div>
+        </section>
+
         <!-- Footer -->
         <footer class="footer">
             <p>QuIt Tab Manager v1.0.0</p>

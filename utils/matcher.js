@@ -35,74 +35,110 @@ export function matchesRule(urlString, rule) {
     const parsed = parseURL(urlString);
     if (!parsed) return false;
 
-    switch (rule.type) {
-        case 'exact':
-            return parsed.fullURL === rule.pattern;
+    try {
+        const url = new URL(urlString);
 
-        case 'domain':
-            // Matches only the exact domain (e.g., example.com matches example.com, not sub.example.com)
-            return parsed.hostname === rule.pattern;
+        switch (rule.type) {
+            case 'exact':
+                // Legacy: exact URL match (for backward compatibility)
+                return parsed.fullURL === rule.pattern;
 
-        case 'subdomain':
-            // Matches subdomains only (e.g., *.example.com matches sub.example.com but not example.com)
-            const pattern = rule.pattern.replace('*.', '');
-            return parsed.hostname.endsWith('.' + pattern) && parsed.hostname !== pattern;
+            case 'domain':
+                // Legacy: matches only the exact domain (not subdomains)
+                return parsed.hostname === rule.pattern;
 
-        case 'domain_all':
-            // Matches domain and all subdomains (e.g., **.example.com matches both example.com and sub.example.com)
-            const domainPattern = rule.pattern.replace('**.', '');
-            return parsed.hostname === domainPattern || parsed.hostname.endsWith('.' + domainPattern);
+            case 'subdomain':
+                // Legacy: matches subdomains only (not main domain)
+                const subdomainPattern = rule.pattern.replace('*.', '');
+                return parsed.hostname.endsWith('.' + subdomainPattern) && parsed.hostname !== subdomainPattern;
 
-        case 'path_exact':
-            // Match exact path only, no wildcards
-            const [exactDomain, ...exactParts] = rule.pattern.split('/');
-            const exactPath = exactParts.join('/');
+            case 'domain_all':
+                // Matches domain and all subdomains (e.g., **.example.com)
+                const domainPattern = rule.pattern.replace('**.', '');
+                return parsed.hostname === domainPattern || parsed.hostname.endsWith('.' + domainPattern);
 
-            if (parsed.hostname !== exactDomain) return false;
+            case 'path_exact':
+                // NEW: Match exact path with optional querystring handling
+                const hasQueryInPattern = rule.pattern.includes('?');
 
-            const normalizedExactPath = parsed.path.startsWith('/') ? parsed.path.substring(1) : parsed.path;
-            return normalizedExactPath === exactPath;
+                if (hasQueryInPattern) {
+                    // Pattern includes querystring - do exact match
+                    try {
+                        // Parse pattern as URL (add protocol if missing)
+                        const patternWithProtocol = rule.pattern.startsWith('http')
+                            ? rule.pattern
+                            : 'https://' + rule.pattern;
+                        const patternUrl = new URL(patternWithProtocol);
 
-        case 'path':
-            // Match domain and path pattern (with wildcards)
-            const [pathDomain, ...pathParts] = rule.pattern.split('/');
-            const pathPattern = pathParts.join('/');
+                        // Match hostname, path, and search params
+                        return url.hostname === patternUrl.hostname &&
+                            url.pathname === patternUrl.pathname &&
+                            url.search === patternUrl.search;
+                    } catch (e) {
+                        console.error('Error parsing pattern URL:', rule.pattern, e);
+                        return false;
+                    }
+                } else {
+                    // Pattern has no querystring - match only hostname + path (ignore query)
+                    const patternParts = rule.pattern.split('/');
+                    const patternHostname = patternParts[0];
+                    const patternPath = '/' + patternParts.slice(1).join('/');
 
-            if (parsed.hostname !== pathDomain) return false;
+                    return url.hostname === patternHostname && url.pathname === patternPath;
+                }
 
-            // Normalize paths (remove leading /)
-            const normalizedPath = parsed.path.startsWith('/') ? parsed.path.substring(1) : parsed.path;
-            const normalizedPattern = pathPattern.startsWith('/') ? pathPattern.substring(1) : pathPattern;
+            case 'path':
+                // Legacy: match domain and path pattern (with wildcards)
+                const [pathDomain, ...pathParts] = rule.pattern.split('/');
+                const pathPattern = pathParts.join('/');
 
-            // Wildcard matching
-            if (normalizedPattern.endsWith('*')) {
-                const prefix = normalizedPattern.slice(0, -1); // Remove the * (e.g., "DramaAdd/*" -> "DramaAdd/")
+                if (parsed.hostname !== pathDomain) return false;
 
-                // Match if:
-                // 1. Exact match without the trailing slash/star (e.g., "DramaAdd" matches "DramaAdd/*")
-                // 2. Path starts with the prefix (e.g., "DramaAdd/photos" matches "DramaAdd/*")
-                const basePrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
-                return normalizedPath === basePrefix || normalizedPath.startsWith(prefix);
-            }
+                // Normalize paths (remove leading /)
+                const normalizedPath = parsed.path.startsWith('/') ? parsed.path.substring(1) : parsed.path;
+                const normalizedPattern = pathPattern.startsWith('/') ? pathPattern.substring(1) : pathPattern;
 
-            // Exact path match (for root path)
-            return normalizedPath === normalizedPattern;
+                // Wildcard matching
+                if (normalizedPattern.endsWith('*')) {
+                    const prefix = normalizedPattern.slice(0, -1);
+                    const basePrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
+                    return normalizedPath === basePrefix || normalizedPath.startsWith(prefix);
+                }
 
-        case 'domain_path':
-            // Match all paths on a specific domain (e.g., example.com/* matches example.com/anything)
-            const [domainOnly, ...rest] = rule.pattern.split('/');
-            if (parsed.hostname !== domainOnly) return false;
-            // Matches any path on this domain
-            return true;
+                // Exact path match
+                return normalizedPath === normalizedPattern;
 
-        default:
-            return false;
+            case 'domain_path':
+                // NEW: Match all paths on domain
+                const [domainOnly, ...rest] = rule.pattern.split('/');
+                return url.hostname === domainOnly;
+
+            case 'regex':
+                // NEW: Custom regex pattern matching
+                try {
+                    // Cache regex for performance
+                    if (!rule._cachedRegex) {
+                        rule._cachedRegex = new RegExp(rule.pattern);
+                    }
+                    return rule._cachedRegex.test(urlString);
+                } catch (error) {
+                    console.error('Invalid regex pattern:', rule.pattern, error);
+                    return false;
+                }
+
+            default:
+                console.warn('Unknown rule type:', rule.type);
+                return false;
+        }
+    } catch (error) {
+        console.error('Error matching rule:', error, rule);
+        return false;
     }
 }
 
 /**
  * Find the best matching rule for a URL
- * Priority: exact > path_exact > path > domain > subdomain > domain_path > domain_all
+ * Priority: exact > regex > path_exact > path > domain > subdomain > domain_path > domain_all
  * If same priority, use the one with longest countdown (to keep tab alive longer)
  * @param {string} urlString - URL to check
  * @param {Array} rules - Array of exclusion rules
@@ -116,7 +152,8 @@ export function findBestMatch(urlString, rules) {
 
     // Priority order (higher number = higher priority)
     const priority = {
-        'exact': 7,         // Exact URL match (most specific)
+        'exact': 8,         // Exact URL match (most specific)
+        'regex': 7,         // Custom regex pattern
         'path_exact': 6,    // Exact path on domain
         'path': 5,          // Path + subpaths
         'domain': 4,        // Exact domain only

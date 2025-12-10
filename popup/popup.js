@@ -1,5 +1,6 @@
 import { getSettings, addExclusionRule, removeExclusionRule } from '../utils/storage.js';
 import { extractDomain } from '../utils/matcher.js';
+import { getPresetForUrl, applyLabelTemplate } from '../utils/website-presets.js';
 
 let currentTab = null;
 let allTabs = [];
@@ -287,7 +288,7 @@ function renderTabItem(tab) {
             countdownClass = '';
         } else {
             countdown = formatTime(state.countdown);
-            countdownLabel = 'Left';
+            countdownLabel = ''; // Removed "Left" label
             if (state.countdown > 180) countdownClass = 'high';
             else if (state.countdown > 60) countdownClass = 'medium';
             else countdownClass = 'low';
@@ -575,10 +576,17 @@ function setupEventListeners() {
         }
     });
 
-    // Radio button change - update preview
+    // Radio button change - update preview and show/hide querystring checkbox and regex input
     document.querySelectorAll('input[name="ruleType"]').forEach(radio => {
-        radio.addEventListener('change', updateModalPreview);
+        radio.addEventListener('change', () => {
+            updateModalPreview();
+            toggleQueryStringCheckbox();
+            toggleRegexInput();
+        });
     });
+
+    // Query string checkbox change - update preview
+    document.getElementById('includeQueryString').addEventListener('change', updateModalPreview);
 
     // Confirm exclusion
     document.getElementById('confirmExclude').addEventListener('click', async () => {
@@ -823,11 +831,109 @@ function escapeHtml(text) {
 // MODAL FUNCTIONS
 // ============================================================================
 
+/**
+ * Apply website preset labels to modal UI
+ * @param {Object} preset - Website preset object
+ */
+function applyPresetLabels(preset) {
+    if (!currentTab || !preset.labels) return;
+
+    // Update each rule type label if preset provides it
+    const ruleTypes = ['path_exact', 'domain_path', 'domain_all', 'regex'];
+
+    ruleTypes.forEach(type => {
+        if (preset.labels[type]) {
+            const radio = document.querySelector(`input[name="ruleType"][value="${type}"]`);
+            if (radio) {
+                const labelDiv = radio.parentElement.querySelector('.radio-label');
+                if (labelDiv) {
+                    const titleEl = labelDiv.querySelector('.radio-title');
+                    const descEl = labelDiv.querySelector('.radio-desc');
+
+                    if (titleEl && preset.labels[type].title) {
+                        titleEl.textContent = preset.labels[type].title;
+                    }
+
+                    if (descEl && preset.labels[type].description) {
+                        const description = applyLabelTemplate(preset.labels[type].description, currentTab.url);
+                        descEl.textContent = description;
+                    }
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Apply default (generic) labels to modal UI
+ */
+function applyDefaultLabels() {
+    if (!currentTab) return;
+
+    try {
+        const url = new URL(currentTab.url);
+        const hostname = url.hostname;
+
+        // Default labels (generic, not website-specific)
+        const defaultLabels = {
+            path_exact: {
+                title: 'Just this page',
+                description: hostname + url.pathname
+            },
+            domain_path: {
+                title: 'This whole site',
+                description: `Any page on ${hostname}`
+            },
+            domain_all: {
+                title: 'Site + related sites',
+                description: `${hostname} + subdomains`
+            },
+            regex: {
+                title: 'Custom pattern (advanced)',
+                description: 'Use your own regex pattern'
+            }
+        };
+
+        // Apply default labels
+        Object.keys(defaultLabels).forEach(type => {
+            const radio = document.querySelector(`input[name="ruleType"][value="${type}"]`);
+            if (radio) {
+                const labelDiv = radio.parentElement.querySelector('.radio-label');
+                if (labelDiv) {
+                    const titleEl = labelDiv.querySelector('.radio-title');
+                    const descEl = labelDiv.querySelector('.radio-desc');
+
+                    if (titleEl) {
+                        titleEl.textContent = defaultLabels[type].title;
+                    }
+
+                    if (descEl) {
+                        descEl.textContent = defaultLabels[type].description;
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error applying default labels:', error);
+    }
+}
+
+
 // Open exclusion modal
-function openExclusionModal() {
+async function openExclusionModal() {
     if (!currentTab) return;
 
     const modal = document.getElementById('exclusionModal');
+
+    // Detect website preset for custom labels
+    const preset = await getPresetForUrl(currentTab.url);
+
+    // Apply custom labels if preset exists
+    if (preset && preset.labels) {
+        applyPresetLabels(preset);
+    } else {
+        applyDefaultLabels();
+    }
 
     // Update preview patterns for current URL
     updateModalPatterns();
@@ -838,8 +944,10 @@ function openExclusionModal() {
     // Show modal
     modal.style.display = 'flex';
 
-    // Reset to current path only (most common use case)
+    // Reset to path_exact (most common use case)
     document.querySelector('input[name="ruleType"][value="path_exact"]').checked = true;
+    toggleQueryStringCheckbox();
+    toggleRegexInput();
     updateModalPreview();
 
     // Show add mode
@@ -858,10 +966,20 @@ function openExclusionModal() {
 }
 
 // Open un-exclude modal (show current rule)
-function openUnexcludeModal(rule) {
+async function openUnexcludeModal(rule) {
     if (!currentTab) return;
 
     const modal = document.getElementById('exclusionModal');
+
+    // Detect website preset for custom labels
+    const preset = await getPresetForUrl(currentTab.url);
+
+    // Apply custom labels if preset exists
+    if (preset && preset.labels) {
+        applyPresetLabels(preset);
+    } else {
+        applyDefaultLabels();
+    }
 
     // Update modal to show current rule
     const ruleInput = document.querySelector(`input[name="ruleType"][value="${rule.type}"]`);
@@ -871,6 +989,8 @@ function openUnexcludeModal(rule) {
 
     // Update patterns (will show current rule's pattern)
     updateModalPatterns();
+    toggleQueryStringCheckbox();
+    toggleRegexInput();
     updateModalPreview();
 
     // Show modal
@@ -910,6 +1030,24 @@ function closeExclusionModal() {
     document.getElementById('cancelExclude').dataset.mode = '';
 }
 
+// Toggle query string checkbox visibility
+function toggleQueryStringCheckbox() {
+    const selectedType = document.querySelector('input[name="ruleType"]:checked').value;
+    const queryStringGroup = document.getElementById('queryStringGroup');
+
+    // Hide for regex type (regex handles this internally), show for all others
+    queryStringGroup.style.display = selectedType === 'regex' ? 'none' : 'block';
+}
+
+// Toggle regex input visibility
+function toggleRegexInput() {
+    const selectedType = document.querySelector('input[name="ruleType"]:checked').value;
+    const regexInputGroup = document.getElementById('regexInputGroup');
+
+    // Show regex input only when regex is selected
+    regexInputGroup.style.display = selectedType === 'regex' ? 'block' : 'none';
+}
+
 // Update modal patterns based on current URL
 function updateModalPatterns() {
     if (!currentTab) return;
@@ -919,25 +1057,21 @@ function updateModalPatterns() {
         const hostname = url.hostname;
         const pathname = url.pathname;
 
-        // Update pattern previews
-        document.getElementById('previewDomain').textContent = hostname;
-        document.getElementById('previewDomainAll').textContent = `**.${hostname}`;
-        document.getElementById('previewSubdomain').textContent = `*.${hostname}`;
+        // Update pattern previews for new simplified rules
 
-        // Path previews
-        if (pathname === '/') {
-            document.getElementById('previewPathExact').textContent = hostname + '/';
-            document.getElementById('previewPath').textContent = hostname + '/';
-        } else {
-            document.getElementById('previewPathExact').textContent = hostname + pathname;
-            const pathWithWildcard = hostname + pathname + (pathname.endsWith('/') ? '*' : '/*');
-            document.getElementById('previewPath').textContent = pathWithWildcard;
-        }
+        // 1. Just this page
+        document.getElementById('previewPageOnly').textContent = hostname + pathname;
 
-        // Domain + all paths
-        document.getElementById('previewDomainPath').textContent = hostname + '/*';
+        // 2. This whole site  
+        document.getElementById('previewWholeSite').textContent = `Any page on ${hostname}`;
 
-        document.getElementById('previewExact').textContent = currentTab.url;
+        // 3. Site + related sites
+        // Extract domain parts for subdomain example
+        const parts = hostname.split('.');
+        const baseDomain = parts.length >= 2 ? parts.slice(-2).join('.') : hostname;
+        document.getElementById('previewSiteAndRelated').textContent =
+            parts.length > 2 ? `${baseDomain} + ${hostname}` : `${hostname} + api.${hostname}`;
+
     } catch (error) {
         console.error('Error updating modal patterns:', error);
     }
@@ -953,68 +1087,94 @@ function updateModalPreview() {
     try {
         const url = new URL(currentTab.url);
         const hostname = url.hostname;
-        const parts = hostname.split('.');
-        const baseDomain = parts.length >= 2 ? parts.slice(-2).join('.') : hostname;
+        const pathname = url.pathname;
+        const includeQueryString = document.getElementById('includeQueryString').checked;
 
         let examples = [];
 
         switch (selectedType) {
-            case 'domain':
-                examples = [
-                    { text: hostname, match: true },
-                    { text: `www.${hostname}`, match: false }
-                ];
-                break;
-
-            case 'domain_all':
-                examples = [
-                    { text: hostname, match: true },
-                    { text: `www.${hostname}`, match: true }
-                ];
-                break;
-
-            case 'subdomain':
-                examples = [
-                    { text: hostname, match: false },
-                    { text: `www.${hostname}`, match: true }
-                ];
-                break;
-
             case 'path_exact':
-                const pathname = url.pathname;
-                const exactPath = pathname === '/' ? '/' : pathname;
-                examples = [
-                    { text: hostname + exactPath, match: true },
-                    { text: hostname + exactPath + (exactPath === '/' ? 'about' : '/more'), match: false }
-                ];
-                break;
+                // Just this page
+                const fullPath = hostname + pathname;
+                const differentPath = hostname + (pathname === '/' ? '/about' : '/different-page');
 
-            case 'path':
-                const currentPath = url.pathname;
-                examples = [
-                    { text: hostname + currentPath, match: true },
-                    { text: hostname + currentPath + (currentPath.endsWith('/') ? 'sub' : '/sub'), match: true }
-                ];
+                if (includeQueryString && url.search) {
+                    // With querystring CHECKED: specific item (e.g., YouTube video)
+                    examples = [
+                        { text: `✓ ${hostname + pathname + url.search}`, match: true },
+                        { text: `✗ ${fullPath} (without params)`, match: false },
+                        { text: `✗ ${hostname + pathname}?different=value`, match: false }
+                    ];
+                } else if (url.search) {
+                    // With querystring UNCHECKED: any variation (e.g., search pages)
+                    examples = [
+                        { text: `✓ ${fullPath} (ignores params ✓)`, match: true },
+                        { text: `✓ ${hostname + pathname + url.search} (ignores params ✓)`, match: true },
+                        { text: `✓ ${fullPath}?page=2 (ignores params ✓)`, match: true }
+                    ];
+                } else {
+                    // No querystring in current URL
+                    examples = [
+                        { text: `✓ ${fullPath}`, match: true },
+                        { text: includeQueryString ? `✗ ${fullPath}?id=123 (params not in current URL)` : `✓ ${fullPath}?id=123 (ignores params ✓)`, match: !includeQueryString },
+                        { text: `✗ ${differentPath}`, match: false }
+                    ];
+                }
                 break;
 
             case 'domain_path':
+                // This whole site - querystring setting still applies
+                if (includeQueryString && url.search) {
+                    examples = [
+                        { text: `✓ ${hostname + pathname + url.search}`, match: true },
+                        { text: `✓ ${hostname}/other${url.search}`, match: true },
+                        { text: `✗ ${hostname + pathname} (no params)`, match: false }
+                    ];
+                } else {
+                    examples = [
+                        { text: `✓ ${hostname + pathname}`, match: true },
+                        { text: `✓ ${hostname}/other/page`, match: true },
+                        { text: `✓ ${hostname}/?any=params`, match: true }
+                    ];
+                }
+                break;
+
+            case 'domain_all':
+                // Site + related sites
+                const parts = hostname.split('.');
+                const baseDomain = parts.length >= 2 ? parts.slice(-2).join('.') : hostname;
+                const subdomain = parts.length > 2 ? `api.${baseDomain}` : `api.${hostname}`;
+
                 examples = [
-                    { text: hostname + '/', match: true },
-                    { text: hostname + '/any/page', match: true }
+                    { text: `✓ ${hostname}/any/page`, match: true },
+                    { text: `✓ ${subdomain}/api/v1`, match: true },
+                    { text: `✗ other-domain.com`, match: false }
                 ];
                 break;
 
-            case 'exact':
-                examples = [
-                    { text: currentTab.url, match: true },
-                    { text: currentTab.url + '?query=value', match: false }
-                ];
+            case 'regex':
+                // Custom regex pattern
+                const regexValue = document.getElementById('regexPattern').value.trim();
+                if (regexValue) {
+                    examples = [
+                        { text: `Pattern: ${regexValue}`, match: true },
+                        { text: `Test against current URL`, match: true }
+                    ];
+                } else {
+                    examples = [
+                        { text: 'Enter regex above to see examples', match: true },
+                        { text: 'Example: ^https://github\\.com/.*/issues$', match: true }
+                    ];
+                }
                 break;
+
+            default:
+                examples = [{ text: 'Unknown rule type', match: false }];
         }
 
         previewContainer.innerHTML = examples.map(ex => `
       <div class="preview-item ${ex.match ? 'preview-match' : 'preview-no-match'}">
-        ${ex.match ? '✓' : '✗'} ${escapeHtml(ex.text)}
+        ${escapeHtml(ex.text)}
       </div>
     `).join('');
     } catch (error) {
@@ -1030,34 +1190,42 @@ function getRulePattern(type) {
         const url = new URL(currentTab.url);
         const hostname = url.hostname;
         const pathname = url.pathname;
+        const includeQueryString = document.getElementById('includeQueryString').checked;
 
         switch (type) {
-            case 'domain':
-                return hostname;
-
-            case 'domain_all':
-                return `**.${hostname}`;
-
-            case 'subdomain':
-                return `*.${hostname}`;
-
             case 'path_exact':
-                // Exact path only, no subpaths
-                return hostname + pathname;
-
-            case 'path':
-                // Current path + all subpaths
-                if (pathname === '/') {
-                    return hostname + '/';
+                // Just this page
+                if (includeQueryString && url.search) {
+                    // Include query params: exact URL
+                    return hostname + pathname + url.search;
+                } else {
+                    // Exclude query params: path only
+                    return hostname + pathname;
                 }
-                return hostname + pathname + (pathname.endsWith('/') ? '*' : '/*');
 
             case 'domain_path':
-                // All pages on this domain
+                // This whole site - all pages on domain
                 return hostname + '/*';
 
-            case 'exact':
-                return currentTab.url;
+            case 'domain_all':
+                // Site + related sites - domain and all subdomains
+                return `**.${hostname}`;
+
+            case 'regex':
+                // Custom regex pattern - get from input field
+                const regexPattern = document.getElementById('regexPattern').value.trim();
+                if (!regexPattern) {
+                    alert('Please enter a regex pattern');
+                    return null;
+                }
+                // Validate regex
+                try {
+                    new RegExp(regexPattern);
+                    return regexPattern;
+                } catch (e) {
+                    alert('Invalid regex pattern: ' + e.message);
+                    return null;
+                }
 
             default:
                 return null;

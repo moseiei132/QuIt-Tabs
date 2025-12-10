@@ -451,6 +451,82 @@ body {
   gap: 10px;
 }
 
+/* Preset Info */
+.preset-info {
+  margin-top: 12px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--macos-bg);
+  border-radius: 6px;
+  border: 0.5px solid var(--macos-divider);
+}
+
+.info-label {
+  font-size: 12px;
+  color: var(--macos-text-secondary);
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 13px;
+  color: var(--macos-text);
+  font-weight: 500;
+  font-family: 'SF Mono', Monaco, monospace;
+}
+
+.preset-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.preset-status {
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 500;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preset-status:empty {
+  display: none;
+}
+
+.preset-status.success {
+  background: rgba(52, 199, 89, 0.1);
+  color: var(--macos-green);
+  border: 0.5px solid var(--macos-green);
+}
+
+.preset-status.error {
+  background: rgba(255, 59, 48, 0.1);
+  color: var(--macos-red);
+  border: 0.5px solid var(--macos-red);
+}
+
+.preset-status.info {
+  background: rgba(0, 122, 255, 0.1);
+  color: var(--macos-accent);
+  border: 0.5px solid var(--macos-accent);
+}
+
+
 /* Footer */
 .footer {
   text-align: center;
