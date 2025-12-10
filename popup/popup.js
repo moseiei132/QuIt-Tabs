@@ -792,8 +792,38 @@ function setupEventListeners() {
     document.getElementById('closeModal').addEventListener('click', closeExclusionModal);
     document.querySelector('.modal-backdrop').addEventListener('click', closeExclusionModal);
 
-    // Cancel button
-    document.getElementById('cancelExclude').addEventListener('click', closeExclusionModal);
+    // Cancel button - handles both cancel and remove protection
+    document.getElementById('cancelExclude').addEventListener('click', async () => {
+        const cancelBtn = document.getElementById('cancelExclude');
+        const mode = cancelBtn.dataset.mode;
+
+        if (mode === 'remove') {
+            // Remove the protection rule
+            const ruleId = cancelBtn.dataset.ruleId;
+            await removeExclusionRule(ruleId);
+            await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
+
+            closeExclusionModal();
+
+            // Refresh states to update button
+            const response = await chrome.runtime.sendMessage({ type: 'getTabStates' });
+            if (response.success) {
+                tabStates = response.data;
+                updateExcludeButton();
+                renderTabsList();
+            }
+
+            const statusText = document.getElementById('statusText');
+            const originalText = statusText.textContent;
+            statusText.textContent = 'Protection removed';
+            setTimeout(() => {
+                statusText.textContent = originalText;
+            }, 2000);
+        } else {
+            // Just close the modal
+            closeExclusionModal();
+        }
+    });
 
     // Confirm exclusion button
     document.getElementById('confirmExclude').addEventListener('click', handleConfirmExclude);
@@ -853,39 +883,48 @@ async function handleConfirmExclude() {
         // Update existing rule
         const ruleId = confirmBtn.dataset.ruleId;
         const originalType = confirmBtn.dataset.originalType;
+        const originalPattern = confirmBtn.dataset.originalPattern;
         const selectedType = document.querySelector('input[name="ruleType"]:checked').value;
         const pattern = getRulePattern(selectedType);
 
         if (!pattern) return;
 
-        // If type changed, remove old rule and add new one
-        if (selectedType !== originalType) {
+        // Update if type or pattern changed
+        if (selectedType !== originalType || pattern !== originalPattern) {
             await removeExclusionRule(ruleId);
             await addExclusionRule({
                 type: selectedType,
                 pattern: pattern,
                 customCountdown: null
             });
+
+            await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
+
+            closeExclusionModal();
+
+            // Refresh states to update button
+            const response = await chrome.runtime.sendMessage({ type: 'getTabStates' });
+            if (response.success) {
+                tabStates = response.data;
+                updateExcludeButton();
+                renderTabsList();
+            }
+
+            const statusText = document.getElementById('statusText');
+            const originalText = statusText.textContent;
+            statusText.textContent = `Updated: ${pattern}`;
+            setTimeout(() => {
+                statusText.textContent = originalText;
+            }, 2000);
+        } else {
+            closeExclusionModal();
+            const statusText = document.getElementById('statusText');
+            const originalText = statusText.textContent;
+            statusText.textContent = 'Rule unchanged';
+            setTimeout(() => {
+                statusText.textContent = originalText;
+            }, 2000);
         }
-
-        await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
-
-        closeExclusionModal();
-
-        // Refresh states to update button
-        const response = await chrome.runtime.sendMessage({ type: 'getTabStates' });
-        if (response.success) {
-            tabStates = response.data;
-            updateExcludeButton();
-            renderTabsList();
-        }
-
-        const statusText = document.getElementById('statusText');
-        const originalText = statusText.textContent;
-        statusText.textContent = selectedType !== originalType ? `Updated: ${pattern}` : 'Rule unchanged';
-        setTimeout(() => {
-            statusText.textContent = originalText;
-        }, 2000);
     } else {
         // Add new rule
         const selectedType = document.querySelector('input[name="ruleType"]:checked').value;
@@ -1270,6 +1309,7 @@ async function openUnexcludeModal(rule) {
     confirmBtn.dataset.mode = 'update';
     confirmBtn.dataset.ruleId = rule.id;
     confirmBtn.dataset.originalType = rule.type;
+    confirmBtn.dataset.originalPattern = rule.pattern;
 
     // Change cancel button to "Remove Protection"
     cancelBtn.textContent = 'Remove Protection';
