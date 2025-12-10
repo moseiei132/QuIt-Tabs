@@ -156,7 +156,7 @@
       <!-- Batch Actions Toolbar -->
       <div id="batchActionsBar" class="batch-actions-bar" style="display: none;">
         <div class="batch-info">
-          <span id="selectedCount">0</span> selected
+          (<span id="selectedCount">0</span>)
         </div>
         <div class="batch-actions">
           <select id="moveToGroupSelect" class="batch-select">
@@ -165,7 +165,11 @@
           <select id="moveToWindowSelect" class="batch-select">
             <option value="">Window...</option>
           </select>
-          <button id="ungroupSelectedBtn" class="btn-batch">Ungroup</button>
+          <select id="batchActionSelect" class="batch-select batch-action">
+            <option value="">Action...</option>
+            <option value="ungroup">Ungroup</option>
+            <option value="close">Close</option>
+          </select>
           <button id="clearSelectionBtn" class="btn-batch-clear">Clear</button>
         </div>
       </div>

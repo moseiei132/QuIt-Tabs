@@ -637,6 +637,51 @@ svg use {
   opacity: 0.9;
 }
 
+.btn-batch-danger {
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: none;
+  background: var(--macos-orange);
+  color: white;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.btn-batch-danger:hover {
+  opacity: 0.9;
+}
+
+/* Tab item close button */
+.tab-close-btn {
+  display: none;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: var(--macos-bg-tertiary);
+  border-radius: 50%;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  color: var(--macos-text-secondary);
+  font-size: 10px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  transition: all 0.15s ease;
+}
+
+.tab-item:hover .tab-close-btn {
+  display: flex;
+}
+
+.tab-close-btn:hover {
+  background: var(--macos-red);
+  color: white;
+}
+
 .tab-item:hover {
   background: var(--macos-bg-secondary);
 }

@@ -501,6 +501,7 @@ function renderTabItem(tab, groupColor = null) {
           ${countdownLabel ? `<span class="countdown-label">${countdownLabel}</span>` : ''}
         </div>
         ${badges.length > 0 ? '<div class="badges">' + badges.join('') + '</div>' : ''}
+        <button class="tab-close-btn" data-tab-id="${tab.id}" title="Close tab">×</button>
       </div>
     </div>
   `;
@@ -523,14 +524,23 @@ function attachTabClickListeners() {
 
         // Click on tab item - focus tab
         item.addEventListener('click', async (e) => {
-            // Don't switch if clicking buttons
-            if (e.target.closest('.btn')) return;
+            // Don't switch if clicking buttons or close
+            if (e.target.closest('.btn') || e.target.closest('.tab-close-btn')) return;
 
             await focusTab(tabId, windowId);
         });
 
         // Add drag and drop
         attachDragHandlers(item);
+    });
+
+    // Attach close button handlers
+    document.querySelectorAll('.tab-close-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const tabId = parseInt(btn.dataset.tabId);
+            await closeTab(tabId);
+        });
     });
 }
 
@@ -613,6 +623,35 @@ function clearSelection() {
     document.querySelectorAll('.tab-checkbox-outer').forEach(cb => cb.checked = false);
     selectedTabIds.clear();
     updateBatchActionsBar();
+}
+
+// Close a single tab
+async function closeTab(tabId) {
+    try {
+        await chrome.tabs.remove(tabId);
+        // Remove from allTabs array
+        allTabs = allTabs.filter(t => t.id !== tabId);
+        renderTabsList();
+    } catch (err) {
+        console.error('Failed to close tab:', err);
+    }
+}
+
+// Close selected tabs
+async function closeSelectedTabs() {
+    if (selectedTabIds.size === 0) return;
+
+    const tabIds = Array.from(selectedTabIds);
+
+    try {
+        await chrome.tabs.remove(tabIds);
+        // Remove from allTabs array
+        allTabs = allTabs.filter(t => !tabIds.includes(t.id));
+        clearSelection();
+        renderTabsList();
+    } catch (err) {
+        console.error('Failed to close tabs:', err);
+    }
 }
 
 // Attach drag-and-drop handlers to tab items
@@ -1070,7 +1109,20 @@ document.getElementById('moveToWindowSelect').addEventListener('change', async (
     }
 });
 
-document.getElementById('ungroupSelectedBtn').addEventListener('click', ungroupSelected);
+// Batch action dropdown (ungroup, close)
+document.getElementById('batchActionSelect').addEventListener('change', async (e) => {
+    const action = e.target.value;
+    if (!action) return;
+
+    if (action === 'ungroup') {
+        await ungroupSelected();
+    } else if (action === 'close') {
+        await closeSelectedTabs();
+    }
+
+    e.target.value = ''; // Reset dropdown
+});
+
 document.getElementById('clearSelectionBtn').addEventListener('click', clearSelection);
 
 // Merge duplicate tabs button
