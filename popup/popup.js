@@ -213,6 +213,49 @@ function updatePauseButton() {
     }
 }
 
+// Update compact tab info in header (when section collapsed)
+function updateCompactTabInfo() {
+    const compactTitle = document.getElementById('compactTitle');
+    const compactStatus = document.getElementById('compactStatus');
+
+    if (!compactTitle || !compactStatus || !currentTab) return;
+
+    // Set title (truncated)
+    const title = currentTab.title || 'Untitled';
+    compactTitle.textContent = title.length > 25 ? title.substring(0, 25) + '...' : title;
+
+    // Determine status
+    const state = tabStates[currentTab.id];
+
+    // Current tab is always "active" when popup is open (user is viewing it)
+    // Only show countdown/paused if there's actually a state with those values
+    if (!state) {
+        // No state = active tab
+        compactStatus.textContent = 'Active';
+        compactStatus.className = 'compact-status active';
+    } else if (state.matchedRule) {
+        // Protected by rule
+        compactStatus.textContent = '∞';
+        compactStatus.className = 'compact-status protected';
+    } else if (state.paused) {
+        // Countdown is paused
+        compactStatus.textContent = '⏸ Paused';
+        compactStatus.className = 'compact-status paused';
+    } else if (currentTab.active) {
+        // This is the active tab in the current window - always show Active
+        compactStatus.textContent = 'Active';
+        compactStatus.className = 'compact-status active';
+    } else if (state.countdown !== null && state.countdown > 0) {
+        // Has active countdown (not the current active tab)
+        compactStatus.textContent = formatTime(state.countdown);
+        compactStatus.className = 'compact-status countdown';
+    } else {
+        // Default - show as active
+        compactStatus.textContent = 'Active';
+        compactStatus.className = 'compact-status active';
+    }
+}
+
 // Render tabs list
 function renderTabsList() {
     const listEl = document.getElementById('tabsList');
@@ -740,11 +783,20 @@ function setupEventListeners() {
     const toggleCurrentTabBtn = document.getElementById('toggleCurrentTab');
     const currentTabContent = document.querySelector('.current-tab-content');
     const toggleIcon = toggleCurrentTabBtn?.querySelector('.toggle-eye-icon');
+    const compactTabInfo = document.getElementById('compactTabInfo');
 
     if (toggleCurrentTabBtn && currentTabContent && toggleIcon) {
         toggleCurrentTabBtn.addEventListener('click', () => {
-            currentTabContent.classList.toggle('collapsed');
+            const isCollapsed = currentTabContent.classList.toggle('collapsed');
             toggleIcon.classList.toggle('collapsed');
+
+            // Show/hide compact tab info
+            if (compactTabInfo) {
+                compactTabInfo.style.display = isCollapsed ? 'flex' : 'none';
+                if (isCollapsed) {
+                    updateCompactTabInfo();
+                }
+            }
         });
     }
 
