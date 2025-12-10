@@ -423,31 +423,13 @@
 }
 
 /* Tooltip */
-.checkbox-tooltip {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  margin-left: 4px;
-}
-
-.tooltip-icon {
-  font-size: 14px;
-  cursor: help;
-  opacity: 0.6;
-  transition: opacity 0.15s ease;
-}
-
-.tooltip-icon:hover {
-  opacity: 1;
-}
-
 .tooltip-content {
   visibility: hidden;
   opacity: 0;
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% + 8px);
   left: 50%;
-  transform: translateX(-50%) translateY(-8px);
+  transform: translateX(-50%) translateY(-4px);
   background: var(--macos-bg);
   color: var(--macos-text);
   padding: 10px 12px;
@@ -460,13 +442,16 @@
   z-index: 1000;
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
-  margin-bottom: 4px;
 }
 
-.checkbox-tooltip:hover .tooltip-content {
+.toggle-with-tooltip {
+  position: relative;
+}
+
+.toggle-with-tooltip:hover .tooltip-content {
   visibility: visible;
   opacity: 1;
-  transform: translateX(-50%) translateY(-4px);
+  transform: translateX(-50%) translateY(0);
 }
 
 .tooltip-content strong {
@@ -478,4 +463,70 @@
   .regex-input:focus {
     box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
   }
+}
+
+/* Toggle Button for Query String */
+.footer-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+}
+
+.toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--macos-bg-secondary);
+  border: 1.5px solid var(--macos-divider);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--macos-text-secondary);
+  user-select: none;
+}
+
+.toggle-btn:hover {
+  background: var(--macos-bg-tertiary);
+  border-color: var(--macos-accent);
+}
+
+.toggle-btn:active {
+  transform: scale(0.98);
+}
+
+.toggle-btn[data-checked="true"] {
+  background: rgba(0, 122, 255, 0.1);
+  border-color: var(--macos-accent);
+  color: var(--macos-accent);
+}
+
+.toggle-btn[data-checked="true"]:hover {
+  background: rgba(0, 122, 255, 0.15);
+}
+
+@media (prefers-color-scheme: dark) {
+  .toggle-btn[data-checked="true"] {
+    background: rgba(10, 132, 255, 0.2);
+  }
+  
+  .toggle-btn[data-checked="true"]:hover {
+    background: rgba(10, 132, 255, 0.25);
+  }
+}
+
+.toggle-icon {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.toggle-btn[data-checked="false"] .toggle-icon {
+  opacity: 0.6;
+}
+
+.toggle-text {
+  white-space: nowrap;
 }

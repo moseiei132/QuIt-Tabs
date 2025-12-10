@@ -589,8 +589,22 @@ function setupEventListeners() {
         });
     });
 
-    // Query string checkbox change - update preview
-    document.getElementById('includeQueryString').addEventListener('change', updateModalPreview);
+    // Query string toggle button - update preview
+    document.getElementById('queryStringToggle').addEventListener('click', (e) => {
+        const btn = e.currentTarget;
+        const isChecked = btn.dataset.checked === 'true';
+        const newChecked = !isChecked;
+
+        // Update button state
+        btn.dataset.checked = String(newChecked);
+
+        // Update icon
+        const iconUse = btn.querySelector('.toggle-icon use');
+        iconUse.setAttribute('href', newChecked ? '#icon-link' : '#icon-unlink');
+
+        // Update preview
+        updateModalPreview();
+    });
 
     // Confirm exclusion
     document.getElementById('confirmExclude').addEventListener('click', async () => {
@@ -954,11 +968,17 @@ async function openExclusionModal() {
     // Reset to path_exact (most common use case)
     document.querySelector('input[name="ruleType"][value="path_exact"]').checked = true;
 
-    // Intelligently set querystring checkbox
+    // Intelligently set querystring toggle
     // Auto-uncheck for search pages (which typically have ?q=, ?page=, etc.)
     // Auto-check for non-search pages (like YouTube videos with ?v=)
     const isSearch = isSearchUrl(currentTab.url);
-    document.getElementById('includeQueryString').checked = !isSearch;
+    const queryToggle = document.getElementById('queryStringToggle');
+    const shouldCheck = !isSearch;
+    queryToggle.dataset.checked = String(shouldCheck);
+
+    // Update icon
+    const iconUse = queryToggle.querySelector('.toggle-icon use');
+    iconUse.setAttribute('href', shouldCheck ? '#icon-link' : '#icon-unlink');
 
     toggleQueryStringCheckbox();
     toggleRegexInput();
@@ -1102,7 +1122,8 @@ function updateModalPreview() {
         const url = new URL(currentTab.url);
         const hostname = url.hostname;
         const pathname = url.pathname;
-        const includeQueryString = document.getElementById('includeQueryString').checked;
+        const queryToggle = document.getElementById('queryStringToggle');
+        const includeQueryString = queryToggle.dataset.checked === 'true';
 
         let examples = [];
 
@@ -1204,7 +1225,8 @@ function getRulePattern(type) {
         const url = new URL(currentTab.url);
         const hostname = url.hostname;
         const pathname = url.pathname;
-        const includeQueryString = document.getElementById('includeQueryString').checked;
+        const queryToggle = document.getElementById('queryStringToggle');
+        const includeQueryString = queryToggle.dataset.checked === 'true';
 
         switch (type) {
             case 'path_exact':
