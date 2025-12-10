@@ -112,8 +112,14 @@ export async function getPresetForUrl(urlString) {
         // Get all available presets (remote + built-in)
         const presets = await getAllPresets();
 
-        // Find matching preset
-        for (const preset of Object.values(presets)) {
+        // Find matching preset (filter out metadata like version, lastUpdated)
+        for (const [key, preset] of Object.entries(presets)) {
+            // Skip metadata properties
+            if (key === 'version' || key === 'lastUpdated') continue;
+
+            // Skip if preset doesn't have required properties
+            if (!preset || !preset.domains) continue;
+
             if (preset.domains.some(domain => hostname === domain || hostname.endsWith('.' + domain))) {
                 return preset;
             }

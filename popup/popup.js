@@ -561,6 +561,7 @@ function setupEventListeners() {
                 if (response.success) {
                     tabStates = response.data;
                     updateExcludeButton();
+                    renderTabsList(); // Update tabs list immediately
                 }
 
                 const statusText = document.getElementById('statusText');
@@ -606,6 +607,7 @@ function setupEventListeners() {
             if (response.success) {
                 tabStates = response.data;
                 updateExcludeButton();
+                renderTabsList(); // Update tabs list immediately
             }
 
             const statusText = document.getElementById('statusText');
@@ -642,6 +644,7 @@ function setupEventListeners() {
             if (response.success) {
                 tabStates = response.data;
                 updateExcludeButton();
+                renderTabsList(); // Update tabs list immediately
             }
 
             const statusText = document.getElementById('statusText');
@@ -672,6 +675,7 @@ function setupEventListeners() {
             if (response.success) {
                 tabStates = response.data;
                 updateExcludeButton();
+                renderTabsList(); // Update tabs list immediately
             }
 
             const statusText = document.getElementById('statusText');
