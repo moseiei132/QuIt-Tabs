@@ -1,5 +1,6 @@
 import { getSettings, getTabStates, saveTabStates } from './utils/storage.js';
 import { findBestMatch } from './utils/matcher.js';
+import { parseQuitParams, cleanQuitParams, hasQuitParams } from './utils/quit-integration.js';
 
 // Tab states structure:
 // {
@@ -145,12 +146,92 @@ async function onTabUpdated(tabId, changeInfo, tab) {
 
     // URL changed, reinitialize the tab
     if (changeInfo.url) {
+        // Check for QuIt app integration parameters
+        await handleQuitIntegration(tabId, changeInfo.url, tab);
+
         // Check if this tab is currently active in its window
         const isActive = activeTabsByWindow[tab.windowId] === tabId;
         await updateTabState(tab, isActive);
     }
 
     await saveTabStates(tabStates);
+}
+
+// Handle QuIt app integration
+async function handleQuitIntegration(tabId, url, tab) {
+    // Check if URL has QuIt parameters
+    if (!hasQuitParams(url)) {
+        return;
+    }
+
+    const params = parseQuitParams(url);
+    if (!params) {
+        return;
+    }
+
+    console.log('QuIt Integration: Processing tab', tabId, 'with params:', params);
+
+    try {
+        // Clean URL for duplicate detection
+        const cleanUrl = cleanQuitParams(url);
+
+        // Check for duplicate tabs with same clean URL
+        const allTabs = await chrome.tabs.query({});
+        const duplicateTab = allTabs.find(t =>
+            t.id !== tabId && t.url === cleanUrl
+        );
+
+        let targetTabId = tabId;
+
+        if (duplicateTab) {
+            console.log('QuIt Integration: Found duplicate tab', duplicateTab.id, 'moving to group and closing new tab', tabId);
+            targetTabId = duplicateTab.id;
+        }
+
+        // Find or create tab group
+        const groups = await chrome.tabGroups.query({ title: params.group });
+        let groupId;
+
+        if (groups.length > 0) {
+            // Group exists, use it
+            groupId = groups[0].id;
+            console.log('QuIt Integration: Using existing group', groupId, params.group);
+        } else {
+            // Create new group
+            groupId = await chrome.tabs.group({ tabIds: [targetTabId] });
+            await chrome.tabGroups.update(groupId, {
+                title: params.group,
+                color: params.color,
+                collapsed: false
+            });
+            console.log('QuIt Integration: Created new group', groupId, params.group, 'with color', params.color);
+        }
+
+        // Add tab to group if not already grouped during creation
+        const targetTab = await chrome.tabs.get(targetTabId);
+        if (targetTab.groupId !== groupId) {
+            await chrome.tabs.group({ tabIds: [targetTabId], groupId });
+        }
+
+        // Apply auto-pause if requested
+        if (params.pause && tabStates[targetTabId]) {
+            tabStates[targetTabId].paused = true;
+            console.log('QuIt Integration: Set tab', targetTabId, 'as paused');
+        }
+
+        // Clean URL (remove quit_* parameters)
+        await chrome.tabs.update(targetTabId, { url: cleanUrl });
+        console.log('QuIt Integration: Cleaned URL for tab', targetTabId);
+
+        // Close duplicate tab if we found one
+        if (duplicateTab) {
+            await chrome.tabs.remove(tabId);
+            console.log('QuIt Integration: Closed duplicate tab', tabId);
+        }
+
+    } catch (error) {
+        console.error('QuIt Integration: Error handling integration:', error);
+    }
 }
 
 // Handle tab creation
