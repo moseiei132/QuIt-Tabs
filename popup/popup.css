@@ -412,37 +412,38 @@ svg use {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  padding: 6px 12px;
   background: var(--macos-bg);
   border-bottom: 0.5px solid var(--macos-divider);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .section-actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
 }
 
 .section-header h2 {
-  font-size: 11px;
+  font-size: 10px;
   text-transform: uppercase;
   color: var(--macos-text-secondary);
   font-weight: 600;
   letter-spacing: 0.3px;
+  margin: 0;
 }
 
 .toggle-btn {
   background: transparent;
   border: 0.5px solid var(--macos-divider);
-  padding: 4px 8px;
-  border-radius: 5px;
+  padding: 2px 6px;
+  border-radius: 4px;
   color: var(--macos-text);
-  font-size: 11px;
+  font-size: 10px;
   cursor: pointer;
   transition: all 0.15s ease;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   font-weight: 500;
   font-family: inherit;
 }
@@ -784,20 +785,22 @@ svg use {
 
 /* Footer */
 .footer {
-  padding: 10px 16px;
-  background: var(--macos-bg-secondary);
-  border-top: 0.5px solid var(--macos-divider);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--macos-bg);
+  border-top: 0.5px solid var(--macos-divider);
+  gap: 8px;
 }
 
 .status {
-  font-size: 11px;
-  color: var(--macos-text-secondary);
   display: flex;
   align-items: center;
   gap: 6px;
+  font-size: 11px;
+  color: var(--macos-text-secondary);
+  flex-shrink: 0;
 }
 
 .status-indicator {
@@ -805,6 +808,47 @@ svg use {
   height: 6px;
   border-radius: 50%;
   background: var(--macos-green);
+}
+
+.footer-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--macos-bg-secondary);
+  border: 0.5px solid var(--macos-divider);
+  border-radius: 4px;
+  padding: 3px 8px;
+  flex: 1;
+  max-width: 150px;
+}
+
+.footer-search .search-icon {
+  color: var(--macos-text-secondary);
+  flex-shrink: 0;
+}
+
+.footer-search input {
+  border: none;
+  background: transparent;
+  color: var(--macos-text);
+  font-size: 11px;
+  outline: none;
+  width: 100%;
+  font-family: inherit;
+  padding-left: 2px;
+}
+
+.footer-search input::placeholder {
+  color: var(--macos-text-secondary);
+}
+
+.footer-search .clear-btn {
+  position: static;
+  transform: none;
+  width: 14px;
+  height: 14px;
+  background: var(--macos-bg-tertiary);
+  flex-shrink: 0;
 }
 
 .status-indicator.disabled {
