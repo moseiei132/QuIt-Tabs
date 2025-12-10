@@ -243,7 +243,7 @@ function renderTabsList() {
     }
 }
 
-// Render tabs grouped by window
+// Render tabs grouped by window (maintaining real tab order within each window)
 function renderGroupedTabs(tabs) {
     const listEl = document.getElementById('tabsList');
     const windows = {};
@@ -259,47 +259,53 @@ function renderGroupedTabs(tabs) {
     // Render each window group
     let html = '';
     Object.entries(windows).forEach(([windowId, windowTabs]) => {
-        // Further group by tab groups within this window
-        const groups = { ungrouped: [] };
-        windowTabs.forEach(tab => {
-            const groupId = tab.groupId;
-            if (groupId === chrome.tabGroups.TAB_GROUP_ID_NONE || groupId === -1 || !groupId) {
-                groups.ungrouped.push(tab);
-            } else {
-                if (!groups[groupId]) {
-                    groups[groupId] = [];
-                }
-                groups[groupId].push(tab);
-            }
-        });
+        // Sort tabs by index within this window
+        windowTabs.sort((a, b) => a.index - b.index);
 
         html += `<div class="window-group">
           <div class="window-group-header">
             🪟 Window ${windowId} (${windowTabs.length} tabs)
           </div>`;
 
-        // Render grouped tabs first
-        Object.entries(groups).forEach(([groupId, groupTabs]) => {
-            if (groupId === 'ungrouped') return; // Skip ungrouped for now
+        // Group consecutive tabs that share the same groupId
+        const sections = [];
+        let currentSection = null;
 
-            const groupInfo = tabGroups[groupId];
-            const groupTitle = groupInfo?.title || 'Unknown Group';
-            const groupColor = groupInfo?.color || 'grey';
+        windowTabs.forEach(tab => {
+            const tabGroupId = tab.groupId;
+            const isGrouped = tabGroupId && tabGroupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && tabGroupId !== -1;
 
-            html += `
-            <div class="tab-group-inline">
-              <div class="tab-group-header-inline" data-color="${groupColor}">
-                <span class="group-indicator-small" style="background-color: var(--group-${groupColor});"></span>
-                <span class="group-title-small">${escapeHtml(groupTitle)}</span>
-              </div>
-              ${groupTabs.map(tab => renderTabItem(tab, groupColor)).join('')}
-            </div>`;
+            if (!currentSection || currentSection.groupId !== tabGroupId) {
+                currentSection = {
+                    groupId: tabGroupId,
+                    isGrouped: isGrouped,
+                    tabs: [tab]
+                };
+                sections.push(currentSection);
+            } else {
+                currentSection.tabs.push(tab);
+            }
         });
 
-        // Render ungrouped tabs
-        if (groups.ungrouped.length > 0) {
-            html += groups.ungrouped.map(tab => renderTabItem(tab)).join('');
-        }
+        // Render sections in order
+        sections.forEach(section => {
+            if (section.isGrouped) {
+                const groupInfo = tabGroups[section.groupId];
+                const groupTitle = groupInfo?.title || 'Unknown Group';
+                const groupColor = groupInfo?.color || 'grey';
+
+                html += `
+                <div class="tab-group-inline">
+                  <div class="tab-group-header-inline" data-color="${groupColor}">
+                    <span class="group-indicator-small" style="background-color: var(--group-${groupColor});"></span>
+                    <span class="group-title-small">${escapeHtml(groupTitle)}</span>
+                  </div>
+                  ${section.tabs.map(tab => renderTabItem(tab, groupColor)).join('')}
+                </div>`;
+            } else {
+                html += section.tabs.map(tab => renderTabItem(tab)).join('');
+            }
+        });
 
         html += `</div>`;
     });
