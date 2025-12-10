@@ -8,23 +8,49 @@ A Chrome extension that automatically closes inactive tabs after a configurable 
 
 ### Smart Tab Management
 - ⏱️ **Automatic Countdown** - Tabs start counting down when you leave them
-- 🎯 **8 Exclusion Rule Types** - Granular control over what gets protected
+- 🎯 **Exclusion Rule Types** - Granular control over what gets protected
 - 📊 **Real-time Display** - See countdown timers for all tabs at a glance
 - 🛡️ **Flexible Protection** - Never close important tabs
 - 🖱️ **Drag-and-Drop** - Reorder tabs or move between windows by dragging
 - 🔀 **Merge Duplicates** - One-click to close duplicate tabs (same URL)
 - 👆 **Click to Switch** - Click any tab in the list to instantly switch to it
 
+### Tab Groups & Batch Operations (NEW!)
+- 📁 **Chrome Tab Groups** - Full visual representation of tab groups with colors
+- ✏️ **Edit Mode** - Select multiple tabs with checkboxes for batch operations
+- 📦 **Batch Move to Group** - Move selected tabs to any existing tab group
+- 🪟 **Batch Move to Window** - Move selected tabs between windows
+- 🔓 **Batch Ungroup** - Remove selected tabs from their groups
+- 🔍 **Search Tabs** - Quickly filter tabs by title or URL
+
+### QuIt App Integration (NEW!)
+Works with [QuIt macOS App](https://github.com/moseiei132/QuIt) for seamless tab management:
+- 🔗 **URL Parameters** - Open tabs with auto-grouping via `quit_group` parameter
+- 🎨 **Auto-Color Groups** - Set group color via `quit_color` parameter
+- ⏸️ **Auto-Pause** - Pause countdown via `quit_pause` parameter
+- 🔄 **Duplicate Detection** - Prevents opening duplicate tabs from QuIt app
+- 🧹 **URL Cleaning** - Automatically removes QuIt parameters after processing
+
+### Website Presets (NEW!)
+- 🌐 **Smart Recognition** - Recognizes popular websites for better UX
+- 📝 **Preset Labels** - Shows friendly names in exclusion modal
+- ⚡ **Query String Detection** - Auto-detects search pages to preserve URLs
+
+### Media Detection (NEW!)
+- 🎵 **Pause on Media** - Don't close tabs playing audio/video
+- 🔊 **Visual Indicator** - Shows play icon on tabs with active media
+
 ### Exclusion Rules
 Protect tabs from auto-closing with powerful pattern matching:
 
-1. **Current Path Only** - Protect a specific page (e.g., `facebook.com/profile`)
-2. **Current Path + Subpaths** - Protect a section and all its pages (e.g., `github.com/user/*`)
-3. **All Pages on Domain** - Protect entire domain (e.g., `example.com/*`)
-4. **Domain Only** - Protect main domain, not subdomains (e.g., `example.com`)
-5. **Domain + All Subdomains** - Protect domain and all subdomains (e.g., `**.example.com`)
-6. **Subdomains Only** - Protect only subdomains (e.g., `*.example.com`)
-7. **Exact URL** - Protect specific URL with query params
+1. **Exact URL** - Protect specific URL with query params
+2. **Path (This Page)** - Protect a specific page path
+3. **Domain (All Pages)** - Protect entire domain
+4. **Domain (Exact Match)** - Protect main domain only
+
+#### Advanced Options
+- 🔗 **Include Query String** - Toggle to preserve URL parameters
+- 📊 **Live Preview** - See exactly what will be protected
 
 ### Advanced Features
 - ⚙️ **Per-Tab Custom Timeouts** - Override global countdown for specific rules
@@ -32,6 +58,7 @@ Protect tabs from auto-closing with powerful pattern matching:
 - 🎨 **Native macOS Design** - Beautiful light/dark mode support
 - 💾 **Import/Export** - Backup and share your rules
 - 🎯 **Priority System** - Smart rule matching when multiple rules apply
+- 👁️ **Current Tab Toggle** - Show/hide current tab section with eye icon
 
 ## 🖥️ Supported Browsers
 
@@ -130,28 +157,32 @@ Protect tabs from auto-closing with powerful pattern matching:
 ### Project Structure
 ```
 QuIt-Tabs/
-├── manifest.json          # Extension manifest
-├── background.js          # Service worker
+├── manifest.json          # Extension manifest (V3)
+├── background.js          # Service worker - tab states, countdown, alarms
 ├── popup/                 # Extension popup
-│   ├── popup.html
-│   ├── popup.js
-│   ├── popup.css
-│   └── modal.css
+│   ├── popup.html         # Main popup UI
+│   ├── popup.js           # Popup logic, tab rendering, batch operations
+│   ├── popup.css          # Popup styling
+│   └── modal.css          # Exclusion modal styling
 ├── options/               # Settings page
 │   ├── options.html
 │   ├── options.js
 │   └── options.css
 ├── utils/                 # Shared utilities
-│   ├── storage.js
-│   └── matcher.js
+│   ├── storage.js         # Settings and state persistence
+│   ├── matcher.js         # URL pattern matching with priority
+│   ├── quit-integration.js # QuIt app URL parameter handling
+│   └── search-detector.js  # Search page detection for query strings
 └── icons/                 # Extension icons
 ```
 
 ### Key Files
-- **background.js** - Manages tab states, countdown logic, alarm handling
-- **popup/popup.js** - Main UI, exclusion modal, tab list
+- **background.js** - Manages tab states, countdown logic, alarm handling, QuIt integration
+- **popup/popup.js** - Main UI, exclusion modal, tab list, batch operations, edit mode
 - **utils/matcher.js** - URL pattern matching with priority system
 - **utils/storage.js** - Settings and state persistence
+- **utils/quit-integration.js** - Handles QuIt app URL parameters
+- **utils/search-detector.js** - Detects search URLs for query string handling
 
 ### Rule Priority
 When multiple rules match a URL, the most specific rule wins:
