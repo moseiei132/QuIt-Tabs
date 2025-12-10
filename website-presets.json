@@ -1,0 +1,410 @@
+{
+    "version": "1.0.0",
+    "lastUpdated": "2025-12-10",
+    "description": "Website-specific presets for QuIt Tab Manager exclusion rules. Each preset customizes the UI labels shown in the exclusion modal based on the current website.",
+    "presets": [
+        {
+            "id": "youtube",
+            "name": "YouTube",
+            "domains": [
+                "youtube.com",
+                "www.youtube.com",
+                "m.youtube.com",
+                "youtu.be"
+            ],
+            "labels": {
+                "path_exact": {
+                    "title": "Just this video",
+                    "description": "{hostname}{pathname}"
+                },
+                "domain_path": {
+                    "title": "All videos",
+                    "description": "Any video on YouTube"
+                },
+                "domain_all": {
+                    "title": "Entire YouTube",
+                    "description": "youtube.com + all related sites"
+                },
+                "regex": {
+                    "title": "Custom pattern (advanced)",
+                    "description": "Use your own regex pattern"
+                }
+            },
+            "examples": {
+                "exampleUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                "path_exact": {
+                    "whatItDoes": "Protects only THIS specific video",
+                    "willProtect": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "willNotProtect": [
+                        "https://www.youtube.com/watch?v=DIFFERENT",
+                        "https://www.youtube.com/",
+                        "https://music.youtube.com/"
+                    ]
+                },
+                "domain_path": {
+                    "whatItDoes": "Protects ALL videos on YouTube",
+                    "willProtect": [
+                        "https://www.youtube.com/watch?v=ANY_VIDEO",
+                        "https://www.youtube.com/",
+                        "https://www.youtube.com/trending"
+                    ],
+                    "willNotProtect": "https://music.youtube.com/"
+                },
+                "domain_all": {
+                    "whatItDoes": "Protects entire YouTube including subdomains",
+                    "willProtect": [
+                        "https://www.youtube.com/*",
+                        "https://music.youtube.com/*",
+                        "https://studio.youtube.com/*"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "github",
+            "name": "GitHub",
+            "domains": [
+                "github.com",
+                "www.github.com"
+            ],
+            "labels": {
+                "path_exact": {
+                    "title": "Just this repository",
+                    "description": "{hostname}{pathname}"
+                },
+                "domain_path": {
+                    "title": "All of GitHub",
+                    "description": "Any page on GitHub"
+                },
+                "domain_all": {
+                    "title": "GitHub + subdomains",
+                    "description": "github.com + api.github.com, etc."
+                },
+                "regex": {
+                    "title": "Custom pattern (advanced)",
+                    "description": "Use your own regex pattern"
+                }
+            },
+            "examples": {
+                "exampleUrl": "https://github.com/moseiei132/QuIt-Tabs",
+                "path_exact": {
+                    "whatItDoes": "Protects only THIS repository",
+                    "willProtect": "https://github.com/moseiei132/QuIt-Tabs",
+                    "willNotProtect": [
+                        "https://github.com/moseiei132/QuIt-Tabs/issues",
+                        "https://github.com/other-user/other-repo",
+                        "https://github.com/"
+                    ]
+                },
+                "domain_path": {
+                    "whatItDoes": "Protects ALL GitHub pages",
+                    "willProtect": [
+                        "https://github.com/any-user/any-repo",
+                        "https://github.com/explore",
+                        "https://github.com/settings"
+                    ],
+                    "willNotProtect": "https://gist.github.com/"
+                },
+                "domain_all": {
+                    "whatItDoes": "Protects GitHub + all subdomains",
+                    "willProtect": [
+                        "https://github.com/*",
+                        "https://gist.github.com/*",
+                        "https://api.github.com/*"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "reddit",
+            "name": "Reddit",
+            "domains": [
+                "reddit.com",
+                "www.reddit.com",
+                "old.reddit.com",
+                "new.reddit.com"
+            ],
+            "labels": {
+                "path_exact": {
+                    "title": "Just this post",
+                    "description": "{hostname}{pathname}"
+                },
+                "domain_path": {
+                    "title": "All of Reddit",
+                    "description": "Any page on Reddit"
+                },
+                "domain_all": {
+                    "title": "Reddit + subdomains",
+                    "description": "reddit.com + all variants"
+                },
+                "regex": {
+                    "title": "Custom pattern (advanced)",
+                    "description": "Use your own regex pattern"
+                }
+            },
+            "examples": {
+                "exampleUrl": "https://www.reddit.com/r/programming/comments/abc123/",
+                "path_exact": {
+                    "whatItDoes": "Protects only THIS specific post",
+                    "willProtect": "https://www.reddit.com/r/programming/comments/abc123/",
+                    "willNotProtect": [
+                        "https://www.reddit.com/r/programming/",
+                        "https://www.reddit.com/r/funny/comments/xyz789/",
+                        "https://old.reddit.com/"
+                    ]
+                },
+                "domain_path": {
+                    "whatItDoes": "Protects all Reddit pages",
+                    "willProtect": [
+                        "https://www.reddit.com/r/programming/",
+                        "https://www.reddit.com/user/username/",
+                        "https://www.reddit.com/"
+                    ],
+                    "willNotProtect": "https://old.reddit.com/"
+                },
+                "domain_all": {
+                    "whatItDoes": "Protects Reddit + all variants (old, new, etc.)",
+                    "willProtect": [
+                        "https://www.reddit.com/*",
+                        "https://old.reddit.com/*",
+                        "https://new.reddit.com/*"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "stackoverflow",
+            "name": "Stack Overflow",
+            "domains": [
+                "stackoverflow.com",
+                "www.stackoverflow.com"
+            ],
+            "labels": {
+                "path_exact": {
+                    "title": "Just this question",
+                    "description": "{hostname}{pathname}"
+                },
+                "domain_path": {
+                    "title": "All Stack Overflow",
+                    "description": "Any page on Stack Overflow"
+                },
+                "domain_all": {
+                    "title": "All Stack Exchange sites",
+                    "description": "stackoverflow.com + stackexchange.com"
+                },
+                "regex": {
+                    "title": "Custom pattern (advanced)",
+                    "description": "Use your own regex pattern"
+                }
+            },
+            "examples": {
+                "exampleUrl": "https://stackoverflow.com/questions/12345/how-to-code",
+                "path_exact": {
+                    "whatItDoes": "Protects only THIS question",
+                    "willProtect": "https://stackoverflow.com/questions/12345/how-to-code",
+                    "willNotProtect": [
+                        "https://stackoverflow.com/questions/67890/other-question",
+                        "https://stackoverflow.com/",
+                        "https://meta.stackoverflow.com/"
+                    ]
+                },
+                "domain_path": {
+                    "whatItDoes": "Protects all Stack Overflow pages",
+                    "willProtect": [
+                        "https://stackoverflow.com/questions/*",
+                        "https://stackoverflow.com/users/*",
+                        "https://stackoverflow.com/tags/*"
+                    ],
+                    "willNotProtect": "https://meta.stackoverflow.com/"
+                }
+            }
+        },
+        {
+            "id": "twitter",
+            "name": "Twitter/X",
+            "domains": [
+                "twitter.com",
+                "www.twitter.com",
+                "x.com",
+                "www.x.com"
+            ],
+            "labels": {
+                "path_exact": {
+                    "title": "Just this tweet",
+                    "description": "{hostname}{pathname}"
+                },
+                "domain_path": {
+                    "title": "All of Twitter/X",
+                    "description": "Any page on Twitter/X"
+                },
+                "domain_all": {
+                    "title": "Twitter/X + subdomains",
+                    "description": "x.com + api.x.com, etc."
+                },
+                "regex": {
+                    "title": "Custom pattern (advanced)",
+                    "description": "Use your own regex pattern"
+                }
+            },
+            "examples": {
+                "exampleUrl": "https://x.com/username/status/1234567890",
+                "path_exact": {
+                    "whatItDoes": "Protects only THIS tweet",
+                    "willProtect": "https://x.com/username/status/1234567890",
+                    "willNotProtect": [
+                        "https://x.com/username/status/9876543210",
+                        "https://x.com/username",
+                        "https://x.com/home"
+                    ]
+                },
+                "domain_path": {
+                    "whatItDoes": "Protects all Twitter/X pages",
+                    "willProtect": [
+                        "https://x.com/username/status/*",
+                        "https://x.com/home",
+                        "https://x.com/explore"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "facebook",
+            "name": "Facebook",
+            "domains": [
+                "facebook.com",
+                "www.facebook.com",
+                "m.facebook.com"
+            ],
+            "labels": {
+                "path_exact": {
+                    "title": "Just this post",
+                    "description": "{hostname}{pathname}"
+                },
+                "domain_path": {
+                    "title": "All of Facebook",
+                    "description": "Any page on Facebook"
+                },
+                "domain_all": {
+                    "title": "Facebook + subdomains",
+                    "description": "facebook.com + all related sites"
+                },
+                "regex": {
+                    "title": "Custom pattern (advanced)",
+                    "description": "Use your own regex pattern"
+                }
+            },
+            "examples": {
+                "exampleUrl": "https://www.facebook.com/username/posts/123456",
+                "path_exact": {
+                    "whatItDoes": "Protects only THIS post",
+                    "willProtect": "https://www.facebook.com/username/posts/123456",
+                    "willNotProtect": [
+                        "https://www.facebook.com/username/posts/789012",
+                        "https://www.facebook.com/username",
+                        "https://www.facebook.com/"
+                    ]
+                },
+                "domain_path": {
+                    "whatItDoes": "Protects all Facebook pages",
+                    "willProtect": [
+                        "https://www.facebook.com/*",
+                        "https://www.facebook.com/groups/*",
+                        "https://www.facebook.com/watch"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "netflix",
+            "name": "Netflix",
+            "domains": [
+                "netflix.com",
+                "www.netflix.com"
+            ],
+            "labels": {
+                "path_exact": {
+                    "title": "Just this show/movie",
+                    "description": "{hostname}{pathname}"
+                },
+                "domain_path": {
+                    "title": "All of Netflix",
+                    "description": "Any page on Netflix"
+                },
+                "domain_all": {
+                    "title": "Netflix + subdomains",
+                    "description": "netflix.com + all related sites"
+                },
+                "regex": {
+                    "title": "Custom pattern (advanced)",
+                    "description": "Use your own regex pattern"
+                }
+            },
+            "examples": {
+                "exampleUrl": "https://www.netflix.com/watch/80057281",
+                "path_exact": {
+                    "whatItDoes": "Protects only THIS show/movie",
+                    "willProtect": "https://www.netflix.com/watch/80057281",
+                    "willNotProtect": [
+                        "https://www.netflix.com/watch/70143836",
+                        "https://www.netflix.com/browse",
+                        "https://www.netflix.com/"
+                    ]
+                },
+                "domain_path": {
+                    "whatItDoes": "Protects all Netflix pages",
+                    "willProtect": [
+                        "https://www.netflix.com/watch/*",
+                        "https://www.netflix.com/browse",
+                        "https://www.netflix.com/latest"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "amazon",
+            "name": "Amazon",
+            "domains": [
+                "amazon.com",
+                "www.amazon.com"
+            ],
+            "labels": {
+                "path_exact": {
+                    "title": "Just this product",
+                    "description": "{hostname}{pathname}"
+                },
+                "domain_path": {
+                    "title": "All of Amazon",
+                    "description": "Any page on Amazon"
+                },
+                "domain_all": {
+                    "title": "Amazon + subdomains",
+                    "description": "amazon.com + all related sites"
+                },
+                "regex": {
+                    "title": "Custom pattern (advanced)",
+                    "description": "Use your own regex pattern"
+                }
+            },
+            "examples": {
+                "exampleUrl": "https://www.amazon.com/dp/B08N5WRWNW",
+                "path_exact": {
+                    "whatItDoes": "Protects only THIS product page",
+                    "willProtect": "https://www.amazon.com/dp/B08N5WRWNW",
+                    "willNotProtect": [
+                        "https://www.amazon.com/dp/B07XYZ1234",
+                        "https://www.amazon.com/s?k=search",
+                        "https://www.amazon.com/"
+                    ]
+                },
+                "domain_path": {
+                    "whatItDoes": "Protects all Amazon pages",
+                    "willProtect": [
+                        "https://www.amazon.com/dp/*",
+                        "https://www.amazon.com/gp/cart",
+                        "https://www.amazon.com/s?k=anything"
+                    ]
+                }
+            }
+        }
+    ]
+}
