@@ -5,10 +5,12 @@ import { isSearchUrl } from '../utils/search-detector.js';
 
 let currentTab = null;
 let allTabs = [];
+let tabGroups = {}; // Store tab group info: { groupId: { title, color } }
 let tabStates = {};
 let settings = {};
 let groupByWindow = false;
 let searchQuery = '';
+let editMode = false; // Edit mode for showing checkboxes
 
 // Initialize popup
 async function init() {
@@ -61,10 +63,22 @@ async function init() {
     }
 }
 
-// Load all tabs
+// Load all tabs and groups
 async function loadAllTabs() {
     try {
         allTabs = await chrome.tabs.query({});
+
+        // Load tab groups
+        const groups = await chrome.tabGroups.query({});
+        tabGroups = {};
+        groups.forEach(group => {
+            tabGroups[group.id] = {
+                title: group.title || 'Untitled',
+                color: group.color,
+                collapsed: group.collapsed
+            };
+        });
+
         renderTabsList();
     } catch (error) {
         console.error('Error loading tabs:', error);
@@ -224,7 +238,8 @@ function renderTabsList() {
     if (groupByWindow) {
         renderGroupedTabs(filteredTabs);
     } else {
-        renderFlatTabs(filteredTabs);
+        // Default to tab groups view
+        renderGroupsByTabGroups(filteredTabs);
     }
 }
 
@@ -244,14 +259,113 @@ function renderGroupedTabs(tabs) {
     // Render each window group
     let html = '';
     Object.entries(windows).forEach(([windowId, windowTabs]) => {
-        html += `
-      <div class="window-group">
-        <div class="window-group-header">
-          🪟 Window ${windowId} (${windowTabs.length} tabs)
+        // Further group by tab groups within this window
+        const groups = { ungrouped: [] };
+        windowTabs.forEach(tab => {
+            const groupId = tab.groupId;
+            if (groupId === chrome.tabGroups.TAB_GROUP_ID_NONE || groupId === -1 || !groupId) {
+                groups.ungrouped.push(tab);
+            } else {
+                if (!groups[groupId]) {
+                    groups[groupId] = [];
+                }
+                groups[groupId].push(tab);
+            }
+        });
+
+        html += `<div class="window-group">
+          <div class="window-group-header">
+            🪟 Window ${windowId} (${windowTabs.length} tabs)
+          </div>`;
+
+        // Render grouped tabs first
+        Object.entries(groups).forEach(([groupId, groupTabs]) => {
+            if (groupId === 'ungrouped') return; // Skip ungrouped for now
+
+            const groupInfo = tabGroups[groupId];
+            const groupTitle = groupInfo?.title || 'Unknown Group';
+            const groupColor = groupInfo?.color || 'grey';
+
+            html += `
+            <div class="tab-group-inline">
+              <div class="tab-group-header-inline" data-color="${groupColor}">
+                <span class="group-indicator-small" style="background-color: var(--group-${groupColor});"></span>
+                <span class="group-title-small">${escapeHtml(groupTitle)}</span>
+              </div>
+              ${groupTabs.map(tab => renderTabItem(tab, groupColor)).join('')}
+            </div>`;
+        });
+
+        // Render ungrouped tabs
+        if (groups.ungrouped.length > 0) {
+            html += groups.ungrouped.map(tab => renderTabItem(tab)).join('');
+        }
+
+        html += `</div>`;
+    });
+
+    listEl.innerHTML = html;
+    attachTabClickListeners();
+}
+
+// Render tabs grouped by Chrome tab groups (respecting real tab order)
+function renderGroupsByTabGroups(tabs) {
+    const listEl = document.getElementById('tabsList');
+
+    // Sort tabs by windowId first, then by their actual index (Chrome tab order)
+    // This ensures tabs from different windows are not mixed together
+    const sortedTabs = [...tabs].sort((a, b) => {
+        if (a.windowId !== b.windowId) {
+            return a.windowId - b.windowId;
+        }
+        return a.index - b.index;
+    });
+
+    // Group consecutive tabs that share the same groupId
+    const sections = [];
+    let currentSection = null;
+
+    sortedTabs.forEach(tab => {
+        const tabGroupId = tab.groupId;
+        const isGrouped = tabGroupId && tabGroupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && tabGroupId !== -1;
+
+        // Check if we should start a new section
+        if (!currentSection || currentSection.groupId !== tabGroupId) {
+            currentSection = {
+                groupId: tabGroupId,
+                isGrouped: isGrouped,
+                tabs: [tab]
+            };
+            sections.push(currentSection);
+        } else {
+            // Add to current section
+            currentSection.tabs.push(tab);
+        }
+    });
+
+    // Render sections
+    let html = '';
+    sections.forEach(section => {
+        if (section.isGrouped) {
+            // Render grouped section
+            const groupInfo = tabGroups[section.groupId];
+            const groupTitle = groupInfo?.title || 'Unknown Group';
+            const groupColor = groupInfo?.color || 'grey';
+
+            html += `
+      <div class="tab-group">
+        <div class="tab-group-header" data-color="${groupColor}">
+          <span class="group-indicator" style="background-color: var(--group-${groupColor});"></span>
+          <span class="group-title">${escapeHtml(groupTitle)}</span>
+          <span class="group-count">(${section.tabs.length})</span>
         </div>
-        ${windowTabs.map(tab => renderTabItem(tab)).join('')}
+        ${section.tabs.map(tab => renderTabItem(tab, groupColor)).join('')}
       </div>
     `;
+        } else {
+            // Render ungrouped section (no header)
+            html += section.tabs.map(tab => renderTabItem(tab)).join('');
+        }
     });
 
     listEl.innerHTML = html;
@@ -266,7 +380,7 @@ function renderFlatTabs(tabs) {
 }
 
 // Render a single tab item
-function renderTabItem(tab) {
+function renderTabItem(tab, groupColor = null) {
     const state = tabStates[tab.id];
     const isActive = currentTab && tab.id === currentTab.id;
 
@@ -319,34 +433,137 @@ function renderTabItem(tab) {
         displayUrl = tab.url;
     }
 
+    // Add group color indicator if tab is in a group
+    const groupIndicatorStyle = groupColor
+        ? `style="border-left: 3px solid var(--group-${groupColor});"`
+        : '';
+
     return `
-    <div class="tab-item ${isActive ? 'active' : ''}" data-tab-id="${tab.id}" data-window-id="${tab.windowId}">
-      <div class="tab-favicon">${favicon}</div>
-      <div class="tab-details">
-        <div class="tab-title">${escapeHtml(title)}</div>
-        <div class="tab-url">${escapeHtml(displayUrl)}</div>
+    <div class="tab-row">
+      <input type="checkbox" class="tab-checkbox-outer" data-tab-id="${tab.id}">
+      <div class="tab-item ${isActive ? 'active' : ''}" data-tab-id="${tab.id}" data-window-id="${tab.windowId}" data-group-id="${tab.groupId || ''}" ${groupIndicatorStyle}>
+        <div class="tab-favicon">${favicon}</div>
+        <div class="tab-details">
+          <div class="tab-title">${escapeHtml(title)}</div>
+          <div class="tab-url">${escapeHtml(displayUrl)}</div>
+        </div>
+        <div class="countdown ${countdownClass}">
+          <span class="countdown-time">${countdown}</span>
+          ${countdownLabel ? `<span class="countdown-label">${countdownLabel}</span>` : ''}
+        </div>
+        ${badges.length > 0 ? '<div class="badges">' + badges.join('') + '</div>' : ''}
       </div>
-      <div class="countdown ${countdownClass}">
-        <span class="countdown-time">${countdown}</span>
-        ${countdownLabel ? `<span class="countdown-label">${countdownLabel}</span>` : ''}
-      </div>
-      ${badges.length > 0 ? '<div class="badges">' + badges.join('') + '</div>' : ''}
     </div>
   `;
 }
 
 // Attach click listeners to tab items
 function attachTabClickListeners() {
+    // Attach checkbox handlers
+    document.querySelectorAll('.tab-checkbox-outer').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            e.stopPropagation();
+            updateBatchActionsBar();
+        });
+    });
+
+    // Attach tab item click handlers
     document.querySelectorAll('.tab-item').forEach(item => {
-        item.addEventListener('click', async () => {
-            const tabId = parseInt(item.dataset.tabId);
-            const windowId = parseInt(item.dataset.windowId);
+        const tabId = parseInt(item.dataset.tabId);
+        const windowId = parseInt(item.dataset.windowId);
+
+        // Click on tab item - focus tab
+        item.addEventListener('click', async (e) => {
+            // Don't switch if clicking buttons
+            if (e.target.closest('.btn')) return;
+
             await focusTab(tabId, windowId);
         });
 
         // Add drag and drop
         attachDragHandlers(item);
     });
+}
+
+// Selection state
+let selectedTabIds = new Set();
+
+// Update batch actions bar visibility and populate dropdowns
+function updateBatchActionsBar() {
+    const checkboxes = document.querySelectorAll('.tab-checkbox-outer:checked');
+    selectedTabIds = new Set([...checkboxes].map(cb => parseInt(cb.dataset.tabId)));
+
+    const batchBar = document.getElementById('batchActionsBar');
+    const selectedCount = document.getElementById('selectedCount');
+
+    if (selectedTabIds.size > 0) {
+        batchBar.style.display = 'flex';
+        selectedCount.textContent = selectedTabIds.size;
+
+        // Populate group dropdown
+        const groupSelect = document.getElementById('moveToGroupSelect');
+        groupSelect.innerHTML = '<option value="">Group...</option>';
+        Object.entries(tabGroups).forEach(([id, info]) => {
+            groupSelect.innerHTML += `<option value="${id}">${escapeHtml(info.title)}</option>`;
+        });
+
+        // Populate window dropdown
+        const windowSelect = document.getElementById('moveToWindowSelect');
+        const windows = [...new Set(allTabs.map(t => t.windowId))];
+        windowSelect.innerHTML = '<option value="">Window...</option>';
+        windows.forEach(wId => {
+            windowSelect.innerHTML += `<option value="${wId}">Window ${wId}</option>`;
+        });
+    } else {
+        batchBar.style.display = 'none';
+    }
+}
+
+// Batch action: Move selected tabs to group
+async function moveSelectedToGroup(groupId) {
+    try {
+        const tabIds = [...selectedTabIds];
+        await chrome.tabs.group({ tabIds, groupId: parseInt(groupId) });
+        clearSelection();
+        await loadAllTabs();
+        updateBatchActionsBar(); // Force update after reload
+    } catch (error) {
+        console.error('Error moving tabs to group:', error);
+    }
+}
+
+// Batch action: Move selected tabs to window
+async function moveSelectedToWindow(windowId) {
+    try {
+        for (const tabId of selectedTabIds) {
+            await chrome.tabs.move(tabId, { windowId: parseInt(windowId), index: -1 });
+        }
+        clearSelection();
+        await loadAllTabs();
+        updateBatchActionsBar(); // Force update after reload
+    } catch (error) {
+        console.error('Error moving tabs to window:', error);
+    }
+}
+
+// Batch action: Ungroup selected tabs
+async function ungroupSelected() {
+    try {
+        const tabIds = [...selectedTabIds];
+        await chrome.tabs.ungroup(tabIds);
+        clearSelection();
+        await loadAllTabs();
+        updateBatchActionsBar(); // Force update after reload
+    } catch (error) {
+        console.error('Error ungrouping tabs:', error);
+    }
+}
+
+// Clear all selections
+function clearSelection() {
+    document.querySelectorAll('.tab-checkbox-outer').forEach(cb => cb.checked = false);
+    selectedTabIds.clear();
+    updateBatchActionsBar();
 }
 
 // Attach drag-and-drop handlers to tab items
@@ -511,19 +728,44 @@ function updateCountdowns() {
     });
 }
 
-// Refresh tab states from background (only when needed, not every second)
-async function refreshTabStates() {
-    const response = await chrome.runtime.sendMessage({ type: 'getTabStates' });
-    if (response.success) {
-        tabStates = response.data;
-    }
-}
-
-// Set up event listeners
+// Set up event listeners  
 function setupEventListeners() {
+    // Current tab toggle
+    const toggleCurrentTabBtn = document.getElementById('toggleCurrentTab');
+    const currentTabSection = document.querySelector('.current-tab');
+    const currentTabContent = document.querySelector('.current-tab-content');
+
+    if (toggleCurrentTabBtn && currentTabSection && currentTabContent) {
+        toggleCurrentTabBtn.addEventListener('click', () => {
+            currentTabContent.classList.toggle('collapsed');
+            currentTabSection.classList.toggle('collapsed');
+        });
+    }
+
     // Settings button
     document.getElementById('settingsBtn').addEventListener('click', () => {
         chrome.runtime.openOptionsPage();
+    });
+
+    // Pause/Resume button
+    document.getElementById('pauseBtn').addEventListener('click', async () => {
+        if (!currentTab) return;
+        const state = tabStates[currentTab.id];
+
+        if (state && state.paused) {
+            await chrome.runtime.sendMessage({ type: 'resumeTab', tabId: currentTab.id });
+        } else {
+            await chrome.runtime.sendMessage({ type: 'pauseTab', tabId: currentTab.id });
+        }
+
+        // Refresh states
+        const response = await chrome.runtime.sendMessage({ type: 'getTabStates' });
+        if (response.success) {
+            tabStates = response.data;
+            updatePauseButton();
+            updateCurrentTabCountdown();
+            renderTabsList();
+        }
     });
 
     // Add domain exclusion - open modal (or show un-exclude if already protected)
@@ -544,43 +786,13 @@ function setupEventListeners() {
     document.getElementById('closeModal').addEventListener('click', closeExclusionModal);
     document.querySelector('.modal-backdrop').addEventListener('click', closeExclusionModal);
 
-    // Cancel button - either cancel or remove
-    document.getElementById('cancelExclude').addEventListener('click', async () => {
-        const cancelBtn = document.getElementById('cancelExclude');
-        const mode = cancelBtn.dataset.mode;
+    // Cancel button
+    document.getElementById('cancelExclude').addEventListener('click', closeExclusionModal);
 
-        if (mode === 'remove') {
-            // Remove the rule
-            const ruleId = cancelBtn.dataset.ruleId;
+    // Confirm exclusion button
+    document.getElementById('confirmExclude').addEventListener('click', handleConfirmExclude);
 
-            if (confirm('Remove protection from this tab?')) {
-                await removeExclusionRule(ruleId);
-                await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
-
-                closeExclusionModal();
-
-                // Refresh states to update button
-                const response = await chrome.runtime.sendMessage({ type: 'getTabStates' });
-                if (response.success) {
-                    tabStates = response.data;
-                    updateExcludeButton();
-                    renderTabsList(); // Update tabs list immediately
-                }
-
-                const statusText = document.getElementById('statusText');
-                const originalText = statusText.textContent;
-                statusText.textContent = 'Protection removed';
-                setTimeout(() => {
-                    statusText.textContent = originalText;
-                }, 2000);
-            }
-        } else {
-            // Just close modal
-            closeExclusionModal();
-        }
-    });
-
-    // Radio button change - update preview and show/hide querystring checkbox and regex input
+    // Radio button change - update preview
     document.querySelectorAll('input[name="ruleType"]').forEach(radio => {
         radio.addEventListener('change', () => {
             updateModalPreview();
@@ -589,171 +801,185 @@ function setupEventListeners() {
         });
     });
 
-    // Query string toggle button - update preview
+    // Query string toggle button
     document.getElementById('queryStringToggle').addEventListener('click', (e) => {
         const btn = e.currentTarget;
         const isChecked = btn.dataset.checked === 'true';
         const newChecked = !isChecked;
-
-        // Update button state
         btn.dataset.checked = String(newChecked);
 
-        // Update icon
         const iconUse = btn.querySelector('.toggle-icon use');
-        iconUse.setAttribute('href', newChecked ? '#icon-link' : '#icon-unlink');
-
-        // Update preview
+        if (iconUse) {
+            iconUse.setAttribute('href', newChecked ? '#icon-link' : '#icon-unlink');
+        }
         updateModalPreview();
     });
+}
 
-    // Confirm exclusion
-    document.getElementById('confirmExclude').addEventListener('click', async () => {
-        const confirmBtn = document.getElementById('confirmExclude');
-        const mode = confirmBtn.dataset.mode;
+// Handle confirm exclusion button click
+async function handleConfirmExclude() {
+    const confirmBtn = document.getElementById('confirmExclude');
+    const mode = confirmBtn.dataset.mode;
 
-        if (mode === 'remove') {
-            // Remove existing rule
-            const ruleId = confirmBtn.dataset.ruleId;
+    if (mode === 'remove') {
+        // Remove existing rule
+        const ruleId = confirmBtn.dataset.ruleId;
+        await removeExclusionRule(ruleId);
+        await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
+
+        closeExclusionModal();
+
+        // Refresh states to update button
+        const response = await chrome.runtime.sendMessage({ type: 'getTabStates' });
+        if (response.success) {
+            tabStates = response.data;
+            updateExcludeButton();
+            renderTabsList();
+        }
+
+        const statusText = document.getElementById('statusText');
+        const originalText = statusText.textContent;
+        statusText.textContent = 'Protection removed';
+        setTimeout(() => {
+            statusText.textContent = originalText;
+        }, 2000);
+    } else if (mode === 'update') {
+        // Update existing rule
+        const ruleId = confirmBtn.dataset.ruleId;
+        const originalType = confirmBtn.dataset.originalType;
+        const selectedType = document.querySelector('input[name="ruleType"]:checked').value;
+        const pattern = getRulePattern(selectedType);
+
+        if (!pattern) return;
+
+        // If type changed, remove old rule and add new one
+        if (selectedType !== originalType) {
             await removeExclusionRule(ruleId);
-            await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
-
-            closeExclusionModal();
-
-            // Refresh states to update button
-            const response = await chrome.runtime.sendMessage({ type: 'getTabStates' });
-            if (response.success) {
-                tabStates = response.data;
-                updateExcludeButton();
-                renderTabsList(); // Update tabs list immediately
-            }
-
-            const statusText = document.getElementById('statusText');
-            const originalText = statusText.textContent;
-            statusText.textContent = 'Protection removed';
-            setTimeout(() => {
-                statusText.textContent = originalText;
-            }, 2000);
-        } else if (mode === 'update') {
-            // Update existing rule
-            const ruleId = confirmBtn.dataset.ruleId;
-            const originalType = confirmBtn.dataset.originalType;
-            const selectedType = document.querySelector('input[name="ruleType"]:checked').value;
-            const pattern = getRulePattern(selectedType);
-
-            if (!pattern) return;
-
-            // If type changed, remove old rule and add new one
-            if (selectedType !== originalType) {
-                await removeExclusionRule(ruleId);
-                await addExclusionRule({
-                    type: selectedType,
-                    pattern: pattern,
-                    customCountdown: null
-                });
-            }
-
-            await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
-
-            closeExclusionModal();
-
-            // Refresh states to update button
-            const response = await chrome.runtime.sendMessage({ type: 'getTabStates' });
-            if (response.success) {
-                tabStates = response.data;
-                updateExcludeButton();
-                renderTabsList(); // Update tabs list immediately
-            }
-
-            const statusText = document.getElementById('statusText');
-            const originalText = statusText.textContent;
-            statusText.textContent = selectedType !== originalType ? `Updated: ${pattern}` : 'Rule unchanged';
-            setTimeout(() => {
-                statusText.textContent = originalText;
-            }, 2000);
-        } else {
-            // Add new rule
-            const selectedType = document.querySelector('input[name="ruleType"]:checked').value;
-            const pattern = getRulePattern(selectedType);
-
-            if (!pattern) return;
-
             await addExclusionRule({
                 type: selectedType,
                 pattern: pattern,
                 customCountdown: null
             });
-
-            await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
-
-            closeExclusionModal();
-
-            // Refresh states to update button
-            const response = await chrome.runtime.sendMessage({ type: 'getTabStates' });
-            if (response.success) {
-                tabStates = response.data;
-                updateExcludeButton();
-                renderTabsList(); // Update tabs list immediately
-            }
-
-            const statusText = document.getElementById('statusText');
-            const originalText = statusText.textContent;
-            statusText.textContent = `Protected: ${pattern}`;
-            setTimeout(() => {
-                statusText.textContent = originalText;
-            }, 2000);
-        }
-    });
-
-    // Pause/Resume button
-    document.getElementById('pauseBtn').addEventListener('click', async () => {
-        if (!currentTab) return;
-        const state = tabStates[currentTab.id];
-
-        if (state && state.paused) {
-            await chrome.runtime.sendMessage({ type: 'resumeTab', tabId: currentTab.id });
-        } else {
-            await chrome.runtime.sendMessage({ type: 'pauseTab', tabId: currentTab.id });
         }
 
-        // Refresh states
+        await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
+
+        closeExclusionModal();
+
+        // Refresh states to update button
         const response = await chrome.runtime.sendMessage({ type: 'getTabStates' });
         if (response.success) {
             tabStates = response.data;
-            updatePauseButton();
+            updateExcludeButton();
+            renderTabsList();
         }
-    });
 
-    // Search input
-    const searchInput = document.getElementById('searchInput');
-    const clearBtn = document.getElementById('clearSearch');
+        const statusText = document.getElementById('statusText');
+        const originalText = statusText.textContent;
+        statusText.textContent = selectedType !== originalType ? `Updated: ${pattern}` : 'Rule unchanged';
+        setTimeout(() => {
+            statusText.textContent = originalText;
+        }, 2000);
+    } else {
+        // Add new rule
+        const selectedType = document.querySelector('input[name="ruleType"]:checked').value;
+        const pattern = getRulePattern(selectedType);
 
-    searchInput.addEventListener('input', (e) => {
-        searchQuery = e.target.value;
-        renderTabsList();
-        clearBtn.style.display = searchQuery ? 'block' : 'none';
-    });
+        if (!pattern) return;
 
-    clearBtn.addEventListener('click', () => {
-        searchQuery = '';
-        searchInput.value = '';
-        clearBtn.style.display = 'none';
-        renderTabsList();
-    });
+        await addExclusionRule({
+            type: selectedType,
+            pattern: pattern,
+            customCountdown: null
+        });
 
-    // Group by window toggle
-    document.getElementById('groupByWindowBtn').addEventListener('click', () => {
-        groupByWindow = !groupByWindow;
-        renderTabsList();
+        await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
 
-        // Update button state
-        document.getElementById('groupByWindowBtn').style.opacity = groupByWindow ? '1' : '0.5';
-    });
+        closeExclusionModal();
 
-    // Merge duplicate tabs button
-    document.getElementById('mergeDuplicatesBtn').addEventListener('click', async () => {
-        await mergeDuplicateTabs();
-    });
+        // Refresh states to update button
+        const response = await chrome.runtime.sendMessage({ type: 'getTabStates' });
+        if (response.success) {
+            tabStates = response.data;
+            updateExcludeButton();
+            renderTabsList();
+        }
+
+        const statusText = document.getElementById('statusText');
+        const originalText = statusText.textContent;
+        statusText.textContent = `Protected: ${pattern}`;
+        setTimeout(() => {
+            statusText.textContent = originalText;
+        }, 2000);
+    }
 }
+
+// Refresh tab states from background (only when needed, not every second)
+async function refreshTabStates() {
+    const response = await chrome.runtime.sendMessage({ type: 'getTabStates' });
+    if (response.success) {
+        tabStates = response.data;
+    }
+}
+
+// Edit Mode toggle
+document.getElementById('editModeBtn').addEventListener('click', () => {
+    editMode = !editMode;
+    document.getElementById('editModeBtn').classList.toggle('active', editMode);
+    document.getElementById('tabsList').classList.toggle('edit-mode', editMode);
+
+    // Clear selections when exiting edit mode
+    if (!editMode) {
+        clearSelection();
+    }
+});
+
+// Group by window toggle
+document.getElementById('groupByWindowBtn').addEventListener('click', () => {
+    groupByWindow = !groupByWindow;
+    document.getElementById('groupByWindowBtn').classList.toggle('active', groupByWindow);
+    renderTabsList();
+});
+
+// Search functionality
+const searchInput = document.getElementById('searchInput');
+const clearSearch = document.getElementById('clearSearch');
+
+searchInput.addEventListener('input', (e) => {
+    searchQuery = e.target.value;
+    clearSearch.style.display = searchQuery ? 'block' : 'none';
+    renderTabsList();
+});
+
+clearSearch.addEventListener('click', () => {
+    searchInput.value = '';
+    searchQuery = '';
+    clearSearch.style.display = 'none';
+    renderTabsList();
+});
+
+// Batch action handlers
+document.getElementById('moveToGroupSelect').addEventListener('change', async (e) => {
+    if (e.target.value) {
+        await moveSelectedToGroup(e.target.value);
+        e.target.value = '';
+    }
+});
+
+document.getElementById('moveToWindowSelect').addEventListener('change', async (e) => {
+    if (e.target.value) {
+        await moveSelectedToWindow(e.target.value);
+        e.target.value = '';
+    }
+});
+
+document.getElementById('ungroupSelectedBtn').addEventListener('click', ungroupSelected);
+document.getElementById('clearSelectionBtn').addEventListener('click', clearSelection);
+
+// Merge duplicate tabs button
+document.getElementById('mergeDuplicatesBtn').addEventListener('click', async () => {
+    await mergeDuplicateTabs();
+});
 
 // Merge duplicate tabs (same URL)
 async function mergeDuplicateTabs() {
@@ -1270,6 +1496,228 @@ function getRulePattern(type) {
         console.error('Error getting rule pattern:', error);
         return null;
     }
+}
+
+// ============================================================================
+// Tab Group Management Functions
+// ============================================================================
+
+// Move tab to a specific group
+async function moveTabToGroup(tabId, targetGroupId) {
+    try {
+        await chrome.tabs.group({ tabIds: [tabId], groupId: targetGroupId });
+        await loadAllTabs();
+    } catch (error) {
+        console.error('Error moving tab to group:', error);
+    }
+}
+
+// Remove tab from its current group
+async function removeTabFromGroup(tabId) {
+    try {
+        await chrome.tabs.ungroup([tabId]);
+        await loadAllTabs();
+    } catch (error) {
+        console.error('Error removing tab from group:', error);
+    }
+}
+
+// Move all tabs in a group to another group
+async function moveAllTabsInGroup(sourceGroupId, targetGroupId) {
+    try {
+        const tabsInGroup = allTabs.filter(tab => tab.groupId === sourceGroupId);
+        const tabIds = tabsInGroup.map(tab => tab.id);
+
+        if (targetGroupId === 'ungroup') {
+            await chrome.tabs.ungroup(tabIds);
+        } else {
+            await chrome.tabs.group({ tabIds, groupId: targetGroupId });
+        }
+
+        await loadAllTabs();
+    } catch (error) {
+        console.error('Error moving all tabs in group:', error);
+    }
+}
+
+// Ungroup all tabs in a group
+async function ungroupAllInGroup(groupId) {
+    try {
+        const tabsInGroup = allTabs.filter(tab => tab.groupId === groupId);
+        const tabIds = tabsInGroup.map(tab => tab.id);
+        await chrome.tabs.ungroup(tabIds);
+        await loadAllTabs();
+    } catch (error) {
+        console.error('Error ungrouping all:', error);
+    }
+}
+
+// Move tab to a different window
+async function moveTabToWindow(tabId, windowId) {
+    try {
+        await chrome.tabs.move(tabId, { windowId, index: -1 });
+        await loadAllTabs();
+    } catch (error) {
+        console.error('Error moving tab to window:', error);
+    }
+}
+
+// ============================================================================
+// Context Menu
+// ============================================================================
+
+let contextMenuState = {
+    visible: false,
+    targetTabId: null,
+    targetGroupId: null,
+    type: null // 'tab' or 'group'
+};
+
+// Show context menu
+function showContextMenu(x, y, type, targetId, event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const menu = document.getElementById('contextMenu');
+    const menuItems = document.querySelector('.context-menu-items');
+
+    contextMenuState = {
+        visible: true,
+        targetTabId: type === 'tab' ? targetId : null,
+        targetGroupId: type === 'group' ? targetId : null,
+        type
+    };
+
+    // Build menu items based on type
+    if (type === 'tab') {
+        const tab = allTabs.find(t => t.id === targetId);
+        menuItems.innerHTML = buildTabContextMenu(tab);
+    } else if (type === 'group') {
+        menuItems.innerHTML = buildGroupContextMenu(targetId);
+    }
+
+    // Position menu
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    menu.style.display = 'block';
+
+    // Add click handlers
+    attachContextMenuHandlers();
+
+    // Close on outside click
+    setTimeout(() => {
+        document.addEventListener('click', hideContextMenu);
+    }, 0);
+}
+
+// Hide context menu
+function hideContextMenu() {
+    const menu = document.getElementById('contextMenu');
+    menu.style.display = 'none';
+    contextMenuState.visible = false;
+    document.removeEventListener('click', hideContextMenu);
+}
+
+// Build tab context menu
+function buildTabContextMenu(tab) {
+    const otherGroups = Object.entries(tabGroups)
+        .filter(([id]) => parseInt(id) !== tab.groupId)
+        .map(([id, info]) => `
+            <div class="context-menu-item" data-action="moveToGroup" data-group-id="${id}">
+                <span class="group-indicator-tiny" style="background-color: var(--group-${info.color});"></span>
+                ${escapeHtml(info.title)}
+</div>
+        `).join('');
+
+    const windows = [...new Set(allTabs.map(t => t.windowId))]
+        .filter(wId => wId !== tab.windowId)
+        .map(wId => `
+            <div class="context-menu-item" data-action="moveToWindow" data-window-id="${wId}">
+                🪟 Window ${wId}
+            </div>
+        `).join('');
+
+    return `
+        ${tab.groupId && tab.groupId !== -1 ? `
+            <div class="context-menu-item" data-action="removeFromGroup">
+                Remove from Group
+            </div>
+            <div class="context-menu-divider"></div>
+        ` : ''}
+        ${otherGroups ? `
+            <div class="context-menu-item has-submenu">
+                Move to Group
+                <div class="context-submenu">
+                    ${otherGroups}
+                </div>
+            </div>
+        ` : ''}
+        ${windows ? `
+            <div class="context-menu-item has-submenu">
+                Move to Window
+                <div class="context-submenu">
+                    ${windows}
+                </div>
+            </div>
+        ` : ''}
+    `;
+}
+
+// Build group context menu
+function buildGroupContextMenu(groupId) {
+    const otherGroups = Object.entries(tabGroups)
+        .filter(([id]) => parseInt(id) !== groupId)
+        .map(([id, info]) => `
+            <div class="context-menu-item" data-action="moveAllToGroup" data-group-id="${id}">
+                <span class="group-indicator-tiny" style="background-color: var(--group-${info.color});"></span>
+                ${escapeHtml(info.title)}
+            </div>
+        `).join('');
+
+    return `
+        <div class="context-menu-item" data-action="ungroupAll">
+            Ungroup All
+        </div>
+        ${otherGroups ? `
+            <div class="context-menu-divider"></div>
+            <div class="context-menu-item has-submenu">
+                Move All to Group
+                <div class="context-submenu">
+                    ${otherGroups}
+                </div>
+            </div>
+        ` : ''}
+    `;
+}
+
+// Attach context menu action handlers
+function attachContextMenuHandlers() {
+    document.querySelectorAll('.context-menu-item[data-action]').forEach(item => {
+        item.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const action = item.dataset.action;
+
+            switch (action) {
+                case 'removeFromGroup':
+                    await removeTabFromGroup(contextMenuState.targetTabId);
+                    break;
+                case 'moveToGroup':
+                    await moveTabToGroup(contextMenuState.targetTabId, parseInt(item.dataset.groupId));
+                    break;
+                case 'moveToWindow':
+                    await moveTabToWindow(contextMenuState.targetTabId, parseInt(item.dataset.windowId));
+                    break;
+                case 'ungroupAll':
+                    await ungroupAllInGroup(contextMenuState.targetGroupId);
+                    break;
+                case 'moveAllToGroup':
+                    await moveAllTabsInGroup(contextMenuState.targetGroupId, parseInt(item.dataset.groupId));
+                    break;
+            }
+
+            hideContextMenu();
+        });
+    });
 }
 
 // ============================================================================

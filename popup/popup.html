@@ -84,35 +84,44 @@
 
     <!-- Current Tab Section -->
     <section class="current-tab">
-      <h2>Current Tab</h2>
-      <div id="currentTabInfo" class="tab-info">
-        <div class="tab-favicon" id="currentFavicon">
-          <svg width="16" height="16" style="opacity: 0.3;">
-            <use href="#icon-globe" />
+      <div class="current-tab-header">
+        <h2>Current Tab</h2>
+        <button id="toggleCurrentTab" class="icon-btn" title="Collapse">
+          <svg width="14" height="14" class="chevron-icon">
+            <path d="M4 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" />
           </svg>
-        </div>
-        <div class="tab-details">
-          <div class="tab-title">Loading...</div>
-          <div class="tab-url">—</div>
-        </div>
-        <div id="currentTabCountdown" class="countdown">
-          <span class="countdown-time">—</span>
-        </div>
+        </button>
       </div>
+      <div class="current-tab-content">
+        <div id="currentTabInfo" class="tab-info">
+          <div class="tab-favicon" id="currentFavicon">
+            <svg width="16" height="16" style="opacity: 0.3;">
+              <use href="#icon-globe" />
+            </svg>
+          </div>
+          <div class="tab-details">
+            <div class="tab-title">Loading...</div>
+            <div class="tab-url">—</div>
+          </div>
+          <div id="currentTabCountdown" class="countdown">
+            <span class="countdown-time">—</span>
+          </div>
+        </div>
 
-      <div class="quick-actions">
-        <button id="pauseBtn" class="btn btn-secondary" title="Pause">
-          <svg width="14" height="14" id="pauseIcon">
-            <use href="#icon-pause" />
-          </svg>
-        </button>
-        <button id="addDomainBtn" class="btn btn-secondary">
-          <svg width="14" height="14">
-            <use href="#icon-shield" />
-          </svg>
-          Exclude
-        </button>
-      </div>
+        <div class="quick-actions">
+          <button id="pauseBtn" class="btn btn-secondary" title="Pause">
+            <svg width="14" height="14" id="pauseIcon">
+              <use href="#icon-pause" />
+            </svg>
+          </button>
+          <button id="addDomainBtn" class="btn btn-secondary">
+            <svg width="14" height="14">
+              <use href="#icon-shield" />
+            </svg>
+            Exclude
+          </button>
+        </div>
     </section>
 
     <!-- Search Box -->
@@ -133,6 +142,12 @@
       <div class="section-header">
         <h2>All Tabs (<span id="tabCount">0</span>)</h2>
         <div class="section-actions">
+          <button id="editModeBtn" class="toggle-btn" title="Edit Mode">
+            <svg width="12" height="12">
+              <use href="#icon-settings" />
+            </svg>
+            Edit
+          </button>
           <button id="mergeDuplicatesBtn" class="toggle-btn" title="Merge Duplicate Tabs">
             <svg width="12" height="12">
               <use href="#icon-merge" />
@@ -147,6 +162,24 @@
           </button>
         </div>
       </div>
+
+      <!-- Batch Actions Toolbar -->
+      <div id="batchActionsBar" class="batch-actions-bar" style="display: none;">
+        <div class="batch-info">
+          <span id="selectedCount">0</span> selected
+        </div>
+        <div class="batch-actions">
+          <select id="moveToGroupSelect" class="batch-select">
+            <option value="">Group...</option>
+          </select>
+          <select id="moveToWindowSelect" class="batch-select">
+            <option value="">Window...</option>
+          </select>
+          <button id="ungroupSelectedBtn" class="btn-batch">Ungroup</button>
+          <button id="clearSelectionBtn" class="btn-batch-clear">Clear</button>
+        </div>
+      </div>
+
       <div id="tabsList" class="tabs-list">
         <div class="loading">Loading tabs...</div>
       </div>
@@ -159,6 +192,12 @@
         <span id="statusText">Active</span>
       </div>
     </footer>
+
+    <!-- Context Menu -->
+    <div id="contextMenu" class="context-menu" style="display: none;">
+      <div class="context-menu-items"></div>
+    </div>
+
   </div>
 
   <!-- Exclusion Rule Modal -->

@@ -13,6 +13,17 @@
   --macos-green: #34c759;
   --macos-shadow: rgba(0, 0, 0, 0.1);
   --macos-shadow-strong: rgba(0, 0, 0, 0.15);
+  
+  /* Chrome Tab Group Colors */
+  --group-grey: #5f6368;
+  --group-blue: #1a73e8;
+  --group-red: #d93025;
+  --group-yellow: #f9ab00;
+  --group-green: #1e8e3e;
+  --group-pink: #d01884;
+  --group-purple: #9334e6;
+  --group-cyan: #12b5cb;
+  --group-orange: #fa903e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -27,6 +38,17 @@
     --macos-accent-hover: #409cff;
     --macos-shadow: rgba(0, 0, 0, 0.3);
     --macos-shadow-strong: rgba(0, 0, 0, 0.5);
+    
+    /* Chrome Tab Group Colors (Dark Mode) */
+    --group-grey: #9aa0a6;
+    --group-blue: #8ab4f8;
+    --group-red: #f28b82;
+    --group-yellow: #fdd663;
+    --group-green: #81c995;
+    --group-pink: #ff8bcb;
+    --group-purple: #c58af9;
+    --group-cyan: #78d9ec;
+    --group-orange: #fcad70;
   }
 }
 
@@ -129,18 +151,40 @@ svg use {
 
 /* Current Tab Section */
 .current-tab {
-  padding: 16px;
   background: var(--macos-bg-secondary);
   border-bottom: 0.5px solid var(--macos-divider);
 }
 
-.current-tab h2 {
+.current-tab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 0 16px;
+}
+
+.current-tab-header h2 {
   font-size: 11px;
   text-transform: uppercase;
   color: var(--macos-text-secondary);
-  margin-bottom: 10px;
   font-weight: 600;
   letter-spacing: 0.3px;
+  margin: 0;
+}
+
+.current-tab-content {
+  padding: 10px 16px 16px 16px;
+}
+
+.current-tab-content.collapsed {
+  display: none;
+}
+
+.chevron-icon {
+  transition: transform 0.2s ease;
+}
+
+.current-tab.collapsed .chevron-icon {
+  transform: rotate(-90deg);
 }
 
 .tab-info {
@@ -437,6 +481,34 @@ svg use {
   background: var(--macos-text-secondary);
 }
 
+/* Tab Row (wrapper for checkbox + tab-item) */
+.tab-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.tab-checkbox-outer {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--macos-accent);
+  flex-shrink: 0;
+  margin: 0;
+  display: none; /* Hidden by default */
+}
+
+/* Show checkboxes in edit mode */
+.tabs-list.edit-mode .tab-checkbox-outer {
+  display: block;
+}
+
+/* Adjust tab-item width in edit mode */
+.tabs-list.edit-mode .tab-item {
+  flex: 1;
+}
+
 /* Tab Item */
 .tab-item {
   display: flex;
@@ -445,10 +517,89 @@ svg use {
   padding: 8px 10px;
   background: transparent;
   border-radius: 6px;
-  margin-bottom: 2px;
   cursor: pointer;
   transition: all 0.1s ease;
   border: 0.5px solid transparent;
+  width: 100%;
+}
+
+/* Batch Actions Bar */
+.batch-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: var(--macos-bg-secondary);
+  border-bottom: 0.5px solid var(--macos-divider);
+  gap: 8px;
+}
+
+.batch-info {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--macos-text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.batch-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.batch-select {
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 0.5px solid var(--macos-divider);
+  background: var(--macos-bg);
+  color: var(--macos-text);
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  min-width: 60px;
+}
+
+.batch-select:hover {
+  background: var(--macos-bg-tertiary);
+}
+
+.btn-batch {
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 0.5px solid var(--macos-divider);
+  background: var(--macos-bg);
+  color: var(--macos-text);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.btn-batch:hover {
+  background: var(--macos-bg-tertiary);
+}
+
+.btn-batch-clear {
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: none;
+  background: var(--macos-red);
+  color: white;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.btn-batch-clear:hover {
+  opacity: 0.9;
 }
 
 .tab-item:hover {
@@ -508,6 +659,15 @@ svg use {
   font-size: 8px;
 }
 
+/* Ungrouped tabs spacing */
+.tab-item:not([style*="border-left"]) {
+  margin-bottom: 6px;
+}
+
+.tab-item:not([style*="border-left"]) + .tab-group {
+  margin-top: 6px;
+}
+
 .badge {
   padding: 2px 6px;
   border-radius: 4px;
@@ -548,6 +708,69 @@ svg use {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px;
+}
+
+/* Tab Group */
+.tab-group {
+  margin-bottom: 12px;
+}
+
+.tab-group-header {
+  font-size: 11px;
+  color: var(--macos-text);
+  padding: 6px 10px;
+  background: var(--macos-bg-secondary);
+  border-radius: 5px;
+  margin-bottom: 4px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.group-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.group-title {
+  flex: 1;
+  font-weight: 500;
+}
+
+.group-count {
+  font-size: 10px;
+  color: var(--macos-text-secondary);
+  font-weight: 400;
+}
+
+/* Inline Tab Group (for window mode) */
+.tab-group-inline {
+  margin-bottom: 8px;
+}
+
+.tab-group-header-inline {
+  font-size: 10px;
+  color: var(--macos-text-secondary);
+  padding: 4px 10px;
+  margin-bottom: 2px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.group-indicator-small {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.group-title-small {
+  font-size: 10px;
 }
 
 /* Loading & Empty States */
@@ -612,4 +835,70 @@ svg use {
   .toggle-btn {
     transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
+}
+
+/* Context Menu */
+.context-menu {
+  position: absolute;
+  background: var(--macos-bg);
+  border: 0.5px solid var(--macos-divider);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px var(--macos-shadow-strong);
+  min-width: 180px;
+  padding: 4px 0;
+  z-index: 10000;
+  font-size: 12px;
+}
+
+.context-menu-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.context-menu-item:hover {
+  background: var(--macos-accent);
+  color: white;
+}
+
+.context-menu-divider {
+  height: 0.5px;
+  background: var(--macos-divider);
+  margin: 4px 0;
+}
+
+.context-menu-item.has-submenu::after {
+  content: '›';
+  margin-left: auto;
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+.context-submenu {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: 0;
+  background: var(--macos-bg);
+  border: 0.5px solid var(--macos-divider);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px var(--macos-shadow-strong);
+  min-width: 160px;
+  padding: 4px 0;
+  margin-left: 4px;
+}
+
+.context-menu-item.has-submenu:hover .context-submenu {
+  display: block;
+}
+
+.group-indicator-tiny {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
