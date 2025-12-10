@@ -732,13 +732,13 @@ function updateCountdowns() {
 function setupEventListeners() {
     // Current tab toggle
     const toggleCurrentTabBtn = document.getElementById('toggleCurrentTab');
-    const currentTabSection = document.querySelector('.current-tab');
     const currentTabContent = document.querySelector('.current-tab-content');
+    const toggleIcon = toggleCurrentTabBtn?.querySelector('.toggle-eye-icon');
 
-    if (toggleCurrentTabBtn && currentTabSection && currentTabContent) {
+    if (toggleCurrentTabBtn && currentTabContent && toggleIcon) {
         toggleCurrentTabBtn.addEventListener('click', () => {
             currentTabContent.classList.toggle('collapsed');
-            currentTabSection.classList.toggle('collapsed');
+            toggleIcon.classList.toggle('collapsed');
         });
     }
 
