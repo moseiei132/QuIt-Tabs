@@ -50,6 +50,17 @@
         <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10zM2.05 12H22"
           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
       </symbol>
+      <symbol id="icon-link" viewBox="0 0 24 24">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-unlink" viewBox="0 0 24 24">
+        <path
+          d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71M3 3l18 18"
+          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
     </svg>
   </div>
 
@@ -224,19 +235,18 @@
       </div>
 
       <div class="modal-footer">
-        <!-- Query Parameters Checkbox (works with all rule types except regex) -->
-        <div class="footer-checkbox" id="queryStringGroup">
-          <label class="checkbox-option-inline">
-            <input type="checkbox" id="includeQueryString" checked>
-            <span class="checkbox-text">Include query parameters</span>
-            <span class="checkbox-tooltip">
-              <span class="tooltip-icon">ℹ️</span>
-              <span class="tooltip-content">
-                <strong>Check for:</strong> YouTube videos (?v=abc), specific items<br>
-                <strong>Uncheck for:</strong> Search pages (?page=2), pagination
-              </span>
+        <!-- Query Parameters Toggle (works with all rule types except regex) -->
+        <div class="footer-toggle" id="queryStringGroup">
+          <button id="queryStringToggle" class="toggle-btn toggle-with-tooltip" data-checked="true">
+            <svg width="14" height="14" class="toggle-icon">
+              <use href="#icon-link" />
+            </svg>
+            <span class="toggle-text">Include query parameters</span>
+            <span class="tooltip-content">
+              <strong>Include for:</strong> YouTube videos (?v=abc), specific items<br>
+              <strong>Exclude for:</strong> Search pages (?page=2), pagination
             </span>
-          </label>
+          </button>
         </div>
         <div class="footer-buttons">
           <button id="cancelExclude" class="btn btn-secondary">Cancel</button>
