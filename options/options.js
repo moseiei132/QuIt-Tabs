@@ -1,4 +1,5 @@
 import { getSettings, saveSettings, addExclusionRule, removeExclusionRule, updateExclusionRule } from '../utils/storage.js';
+import { forceRefreshPresets, clearPresetCache, getPresetCacheMetadata } from '../utils/website-presets.js';
 
 let settings = {};
 let editingRuleId = null;
@@ -33,6 +34,7 @@ async function init() {
         settings = await getSettings();
         renderSettings();
         renderRules();
+        renderPresetInfo();
         setupEventListeners();
     } catch (error) {
         console.error('Error initializing options page:', error);
@@ -46,6 +48,30 @@ function renderSettings() {
     document.getElementById('countdownValue').textContent = settings.globalCountdown / 60;
     document.getElementById('autoClosePinned').checked = settings.autoClosePinned;
     document.getElementById('pauseOnMedia').checked = settings.pauseOnMedia;
+}
+
+// Render preset information
+async function renderPresetInfo() {
+    try {
+        const metadata = await getPresetCacheMetadata();
+
+        if (!metadata) {
+            document.getElementById('presetVersion').textContent = 'Not fetched yet';
+            document.getElementById('presetLastUpdate').textContent = '—';
+            document.getElementById('presetLastFetch').textContent = 'Never';
+            document.getElementById('presetCount').textContent = '0 (built-in only)';
+            return;
+        }
+
+        document.getElementById('presetVersion').textContent = metadata.version;
+        document.getElementById('presetLastUpdate').textContent = metadata.lastUpdated;
+        document.getElementById('presetLastFetch').textContent = metadata.lastFetched
+            ? new Date(metadata.lastFetched).toLocaleString()
+            : 'Never';
+        document.getElementById('presetCount').textContent = metadata.presetCount;
+    } catch (error) {
+        console.error('Error rendering preset info:', error);
+    }
 }
 
 // Render exclusion rules
@@ -273,6 +299,41 @@ function setupEventListeners() {
     });
 
     document.getElementById('importFile').addEventListener('change', importRules);
+
+    // Refresh presets button
+    document.getElementById('refreshPresetsBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('refreshPresetsBtn');
+        const status = document.getElementById('presetStatus');
+
+        btn.disabled = true;
+        status.textContent = 'Fetching latest presets from GitHub...';
+        status.className = 'preset-status info';
+
+        try {
+            await forceRefreshPresets();
+            await renderPresetInfo();
+            status.textContent = '✓ Presets refreshed successfully!';
+            status.className = 'preset-status success';
+            setTimeout(() => { status.textContent = ''; }, 3000);
+        } catch (error) {
+            status.textContent = `✗ Failed to fetch presets: ${error.message}`;
+            status.className = 'preset-status error';
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    // Clear preset cache button
+    document.getElementById('clearPresetCacheBtn').addEventListener('click', async () => {
+        if (confirm('Clear preset cache? This will force a fresh fetch on next use.')) {
+            await clearPresetCache();
+            await renderPresetInfo();
+            const status = document.getElementById('presetStatus');
+            status.textContent = '✓ Cache cleared';
+            status.className = 'preset-status success';
+            setTimeout(() => { status.textContent = ''; }, 2000);
+        }
+    });
 }
 
 // Export rules to JSON

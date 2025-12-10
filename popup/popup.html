@@ -86,7 +86,6 @@
         </div>
         <div id="currentTabCountdown" class="countdown">
           <span class="countdown-time">—</span>
-          <span class="countdown-label">Left</span>
         </div>
       </div>
 
@@ -177,71 +176,72 @@
         <!-- Row 2: Scrollable Options -->
         <div class="scroll-section">
           <div class="form-group">
-            <label>Rule Type</label>
+            <label>What should stay open?</label>
             <div class="rule-type-options">
               <label class="radio-option">
                 <input type="radio" name="ruleType" value="path_exact" checked>
                 <div class="radio-label">
-                  <div class="radio-title">Current Path Only</div>
-                  <div class="radio-desc" id="previewPathExact">example.com/page</div>
-                </div>
-              </label>
-
-              <label class="radio-option">
-                <input type="radio" name="ruleType" value="path">
-                <div class="radio-label">
-                  <div class="radio-title">Current Path + Subpaths</div>
-                  <div class="radio-desc" id="previewPath">example.com/page/*</div>
+                  <div class="radio-title">Just this page</div>
+                  <div class="radio-desc" id="previewPageOnly">example.com/videos/watch</div>
                 </div>
               </label>
 
               <label class="radio-option">
                 <input type="radio" name="ruleType" value="domain_path">
                 <div class="radio-label">
-                  <div class="radio-title">All Pages on Domain</div>
-                  <div class="radio-desc" id="previewDomainPath">example.com/*</div>
-                </div>
-              </label>
-
-              <label class="radio-option">
-                <input type="radio" name="ruleType" value="domain">
-                <div class="radio-label">
-                  <div class="radio-title">Domain Only</div>
-                  <div class="radio-desc" id="previewDomain">example.com</div>
+                  <div class="radio-title">This whole site</div>
+                  <div class="radio-desc" id="previewWholeSite">Any page on example.com</div>
                 </div>
               </label>
 
               <label class="radio-option">
                 <input type="radio" name="ruleType" value="domain_all">
                 <div class="radio-label">
-                  <div class="radio-title">Domain + All Subdomains</div>
-                  <div class="radio-desc" id="previewDomainAll">**.example.com</div>
+                  <div class="radio-title">Site + related sites</div>
+                  <div class="radio-desc" id="previewSiteAndRelated">example.com + api.example.com</div>
                 </div>
               </label>
 
               <label class="radio-option">
-                <input type="radio" name="ruleType" value="subdomain">
+                <input type="radio" name="ruleType" value="regex">
                 <div class="radio-label">
-                  <div class="radio-title">Subdomains Only</div>
-                  <div class="radio-desc" id="previewSubdomain">*.example.com</div>
+                  <div class="radio-title">Custom pattern (advanced)</div>
+                  <div class="radio-desc">Use your own regex pattern</div>
                 </div>
               </label>
+            </div>
+          </div>
 
-              <label class="radio-option">
-                <input type="radio" name="ruleType" value="exact">
-                <div class="radio-label">
-                  <div class="radio-title">Exact URL</div>
-                  <div class="radio-desc" id="previewExact">https://example.com/page</div>
-                </div>
-              </label>
+          <!-- Regex Input Field (only shown when regex is selected) -->
+          <div class="form-group" id="regexInputGroup" style="display: none;">
+            <label for="regexPattern">Regular Expression</label>
+            <input type="text" id="regexPattern" class="regex-input" placeholder="^https://.*\.example\.com/.*$">
+            <div class="regex-help">
+              <span class="regex-help-text">Example: <code>^https://github\.com/.*/issues$</code></span>
             </div>
           </div>
         </div>
       </div>
 
       <div class="modal-footer">
-        <button id="cancelExclude" class="btn btn-secondary">Cancel</button>
-        <button id="confirmExclude" class="btn btn-primary">Add Rule</button>
+        <!-- Query Parameters Checkbox (works with all rule types except regex) -->
+        <div class="footer-checkbox" id="queryStringGroup">
+          <label class="checkbox-option-inline">
+            <input type="checkbox" id="includeQueryString" checked>
+            <span class="checkbox-text">Include query parameters</span>
+            <span class="checkbox-tooltip">
+              <span class="tooltip-icon">ℹ️</span>
+              <span class="tooltip-content">
+                <strong>Check for:</strong> YouTube videos (?v=abc), specific items<br>
+                <strong>Uncheck for:</strong> Search pages (?page=2), pagination
+              </span>
+            </span>
+          </label>
+        </div>
+        <div class="footer-buttons">
+          <button id="cancelExclude" class="btn btn-secondary">Cancel</button>
+          <button id="confirmExclude" class="btn btn-primary">Add Rule</button>
+        </div>
       </div>
     </div>
   </div>
