@@ -1,6 +1,7 @@
 import { getSettings, addExclusionRule, removeExclusionRule } from '../utils/storage.js';
 import { extractDomain } from '../utils/matcher.js';
 import { getPresetForUrl, applyLabelTemplate } from '../utils/website-presets.js';
+import { isSearchUrl } from '../utils/search-detector.js';
 
 let currentTab = null;
 let allTabs = [];
@@ -952,6 +953,13 @@ async function openExclusionModal() {
 
     // Reset to path_exact (most common use case)
     document.querySelector('input[name="ruleType"][value="path_exact"]').checked = true;
+
+    // Intelligently set querystring checkbox
+    // Auto-uncheck for search pages (which typically have ?q=, ?page=, etc.)
+    // Auto-check for non-search pages (like YouTube videos with ?v=)
+    const isSearch = isSearchUrl(currentTab.url);
+    document.getElementById('includeQueryString').checked = !isSearch;
+
     toggleQueryStringCheckbox();
     toggleRegexInput();
     updateModalPreview();
