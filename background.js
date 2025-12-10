@@ -278,7 +278,9 @@ async function handleMessage(message, sender, sendResponse) {
                 // Re-evaluate all tabs with new settings
                 const allTabs = await chrome.tabs.query({});
                 for (const tab of allTabs) {
-                    await updateTabState(tab);
+                    // Check if this tab is currently active in its window
+                    const isActive = activeTabsByWindow[tab.windowId] === tab.id;
+                    await updateTabState(tab, isActive);
                 }
                 await saveTabStates(tabStates);
                 sendResponse({ success: true });
