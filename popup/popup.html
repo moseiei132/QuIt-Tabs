@@ -124,19 +124,6 @@
         </div>
     </section>
 
-    <!-- Search Box -->
-    <div class="search-box">
-      <svg class="search-icon" width="14" height="14">
-        <use href="#icon-search" />
-      </svg>
-      <input type="text" id="searchInput" placeholder="Search tabs...">
-      <button id="clearSearch" class="clear-btn" style="display: none;">
-        <svg width="10" height="10">
-          <use href="#icon-close" />
-        </svg>
-      </button>
-    </div>
-
     <!-- All Tabs List -->
     <section class="tabs-section">
       <div class="section-header">
@@ -190,6 +177,14 @@
       <div class="status">
         <span class="status-indicator" id="statusIndicator"></span>
         <span id="statusText">Active</span>
+      </div>
+      <div class="footer-search">
+        <input type="text" id="searchInput" placeholder="Search...">
+        <button id="clearSearch" class="clear-btn" style="display: none;">
+          <svg width="8" height="8">
+            <use href="#icon-close" />
+          </svg>
+        </button>
       </div>
     </footer>
 
