@@ -99,7 +99,7 @@ async function updateTabState(tab, isActive = false) {
         isPinned: tab.pinned || false,
         hasMedia: tab.audible || false,
         matchedRule: matchedRule,
-        paused: false
+        paused: existingState?.paused || false // Preserve existing paused state
     };
 }
 
