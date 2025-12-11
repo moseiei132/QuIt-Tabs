@@ -762,6 +762,28 @@ async function focusTab(tabId, windowId) {
     }
 }
 
+// Batch protect/unprotect selected tabs
+async function batchProtect(protect) {
+    const checkboxes = document.querySelectorAll('.tab-checkbox-outer:checked');
+    const tabIds = Array.from(checkboxes).map(cb => parseInt(cb.dataset.tabId));
+
+    if (tabIds.length === 0) return;
+
+    // Send protect/unprotect message for each tab
+    for (const tabId of tabIds) {
+        const messageType = protect ? 'protectTab' : 'unprotectTab';
+        await chrome.runtime.sendMessage({ type: messageType, tabId });
+    }
+
+    // Wait for background to reinitialize states (especially important for unprotect)
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Refresh states and UI
+    await refreshTabStates();
+    renderTabsList();
+    clearSelection();
+}
+
 // Update all countdowns (calculated locally for real-time performance)
 function updateCountdowns() {
     // Update current tab countdown
@@ -905,12 +927,16 @@ function setupEventListeners() {
         }
     });
 
-    // Batch action dropdown (ungroup, close)
+    // Batch action dropdown (protect, unprotect, ungroup, close)
     document.getElementById('batchActionSelect').addEventListener('change', async (e) => {
         const action = e.target.value;
         if (!action) return;
 
-        if (action === 'ungroup') {
+        if (action === 'protect') {
+            await batchProtect(true);
+        } else if (action === 'unprotect') {
+            await batchProtect(false);
+        } else if (action === 'ungroup') {
             await ungroupSelected();
         } else if (action === 'close') {
             await closeSelectedTabs();
