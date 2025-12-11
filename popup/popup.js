@@ -206,39 +206,42 @@ function updateCurrentTabCountdown() {
 
 // Update compact tab info in header (when section collapsed)
 function updateCompactTabInfo() {
+    const compactFavicon = document.getElementById('compactFavicon');
     const compactTitle = document.getElementById('compactTitle');
-    const compactStatus = document.getElementById('compactStatus');
+    const compactCountdown = document.getElementById('compactCountdown');
 
-    if (!compactTitle || !compactStatus || !currentTab) return;
+    if (!compactTitle || !compactCountdown || !currentTab) return;
+
+    // Set favicon
+    if (compactFavicon && currentTab.favIconUrl) {
+        compactFavicon.src = currentTab.favIconUrl;
+        compactFavicon.style.display = 'block';
+    } else if (compactFavicon) {
+        compactFavicon.style.display = 'none';
+    }
 
     // Set title (truncated)
     const title = currentTab.title || 'Untitled';
-    compactTitle.textContent = title.length > 25 ? title.substring(0, 25) + '...' : title;
+    compactTitle.textContent = title.length > 20 ? title.substring(0, 20) + '…' : title;
 
-    // Determine status
+    // Determine countdown display
     const state = tabStates[currentTab.id];
 
-    // Current tab is always "active" when popup is open (user is viewing it)
-    if (!state) {
-        // No state = active tab
-        compactStatus.textContent = 'Active';
-        compactStatus.className = 'compact-status active';
-    } else if (state.protected) {
-        // Tab is protected
-        compactStatus.innerHTML = '<svg width="12" height="12" class="shield-icon"><use href="#icon-shield-filled"/></svg> Protected';
-        compactStatus.className = 'compact-status protected';
-    } else if (currentTab.active) {
-        // This is the active tab in the current window - always show Active
-        compactStatus.textContent = 'Active';
-        compactStatus.className = 'compact-status active';
+    if (!state || currentTab.active) {
+        // Active tab
+        compactCountdown.textContent = 'Active';
+        compactCountdown.className = 'compact-countdown active';
+    } else if (state.protected || (state.hasMedia && settings.pauseOnMedia)) {
+        // Tab is protected or media playing
+        compactCountdown.textContent = state.protected ? 'Protected' : 'Media';
+        compactCountdown.className = 'compact-countdown protected';
     } else if (state.countdown !== null && state.countdown > 0) {
-        // Has active countdown (not the current active tab)
-        compactStatus.textContent = formatTime(state.countdown);
-        compactStatus.className = 'compact-status countdown';
+        // Has active countdown
+        compactCountdown.textContent = formatTime(state.countdown);
+        compactCountdown.className = 'compact-countdown countdown';
     } else {
-        // Default - show as active
-        compactStatus.textContent = 'Active';
-        compactStatus.className = 'compact-status active';
+        compactCountdown.textContent = 'Active';
+        compactCountdown.className = 'compact-countdown active';
     }
 }
 

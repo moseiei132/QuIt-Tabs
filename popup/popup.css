@@ -149,15 +149,36 @@ svg use {
   background: var(--macos-bg-tertiary);
 }
 
-/* Compact Tab Info (shown in header when section collapsed) */
-.compact-tab-info {
-  flex: 1;
+/* Header Left (logo + compact info) */
+.header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 8px;
+  gap: 0;
+  flex: 1;
   min-width: 0;
   overflow: hidden;
+}
+
+/* Compact Tab Info (shown in header when section collapsed) */
+.compact-tab-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.compact-divider {
+  color: var(--macos-divider);
+  font-size: 14px;
+  margin: 0 4px;
+}
+
+.compact-favicon {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 
 .compact-title {
@@ -167,36 +188,31 @@ svg use {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 150px;
+  max-width: 100px;
 }
 
-.compact-status {
+.compact-countdown {
   font-size: 10px;
-  font-weight: 500;
+  font-weight: 600;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: 10px;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-.compact-status.active {
-  background: var(--macos-green);
-  color: white;
+.compact-countdown.active {
+  background: rgba(52, 199, 89, 0.15);
+  color: var(--macos-green);
 }
 
-.compact-status.countdown {
-  background: var(--macos-orange);
-  color: white;
+.compact-countdown.countdown {
+  background: rgba(255, 149, 0, 0.15);
+  color: var(--macos-orange);
 }
 
-.compact-status.paused {
-  background: var(--macos-text-secondary);
-  color: white;
-}
-
-.compact-status.protected {
-  background: var(--macos-blue);
-  color: white;
+.compact-countdown.protected {
+  background: rgba(0, 122, 255, 0.15);
+  color: var(--macos-accent);
 }
 
 /* Current Tab Section */
