@@ -437,9 +437,15 @@ function renderTabItem(tab, groupColor = null) {
         countdownLabel = '';
         countdownClass = '';
     } else if (state) {
-        if (state.protected || (state.hasMedia && settings.pauseOnMedia)) {
-            // Tab is protected or media playing - show shield with label (vertical stack)
-            const label = state.protected ? 'Protected' : 'Media';
+        // Check if tab is protected (explicit, media, or pinned with setting disabled)
+        const isPinnedProtected = tab.pinned && !settings.autoClosePinned;
+        const isMediaProtected = state.hasMedia && settings.pauseOnMedia;
+
+        if (state.protected || isMediaProtected || isPinnedProtected) {
+            // Tab is protected - show shield with label (vertical stack)
+            let label = 'Protected';
+            if (isPinnedProtected) label = 'Pinned';
+            else if (isMediaProtected) label = 'Media';
             countdown = '<svg width="14" height="14" class="shield-icon"><use href="#icon-shield-filled"/></svg><span>' + label + '</span>';
             countdownLabel = '';
             countdownClass = 'protected';
@@ -798,12 +804,19 @@ function updateCountdowns() {
         const state = tabStates[tabId];
         const countdownEl = item.querySelector('.countdown');
         const timeEl = countdownEl.querySelector('.countdown-time');
+        const tab = allTabs.find(t => t.id === tabId);
 
         if (!state || state.countdown === null) return;
 
-        if (state.protected || (state.hasMedia && settings.pauseOnMedia)) {
-            // Protected or media playing - show shield icon with label
-            const label = state.protected ? 'Protected' : 'Media';
+        // Check if tab is protected (explicit, media, or pinned with setting disabled)
+        const isPinnedProtected = tab && tab.pinned && !settings.autoClosePinned;
+        const isMediaProtected = state.hasMedia && settings.pauseOnMedia;
+
+        if (state.protected || isMediaProtected || isPinnedProtected) {
+            // Protected - show shield icon with label
+            let label = 'Protected';
+            if (isPinnedProtected) label = 'Pinned';
+            else if (isMediaProtected) label = 'Media';
             timeEl.innerHTML = '<svg width="14" height="14" class="shield-icon"><use href="#icon-shield-filled"/></svg><span>' + label + '</span>';
             countdownEl.className = 'countdown protected';
             return;
