@@ -26,8 +26,10 @@ function renderSettings() {
 function setupEventListeners() {
     // Enabled toggle
     document.getElementById('enabledToggle').addEventListener('change', async (e) => {
+        console.log('Enable toggle changed:', e.target.checked);
         settings.enabled = e.target.checked;
         await saveSettings(settings);
+        console.log('Settings saved:', settings);
         await notifyBackgroundSettingsChanged();
         showSaveStatus('Settings saved');
     });
