@@ -1027,6 +1027,10 @@ function setupSettingsPanel() {
         document.getElementById('popupAutoCloseSpecial').checked = settings.autoCloseSpecial;
         document.getElementById('popupPauseOnMedia').checked = settings.pauseOnMedia;
         document.getElementById('popupFocusedWindowOnly').checked = settings.focusedWindowOnly;
+
+        // Set version from manifest
+        const manifest = chrome.runtime.getManifest();
+        document.getElementById('extensionVersion').textContent = 'v' + manifest.version;
     });
 
     // Close settings panel
