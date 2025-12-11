@@ -455,6 +455,10 @@ async function handleMessage(message, sender, sendResponse) {
             case 'unprotectTab':
                 if (tabStates[message.tabId]) {
                     tabStates[message.tabId].protected = false;
+                    // Restart countdown from beginning
+                    tabStates[message.tabId].lastActiveTime = Date.now();
+                    tabStates[message.tabId].countdown = settings.globalCountdown;
+                    tabStates[message.tabId].initialCountdown = settings.globalCountdown;
                     await saveTabStates(tabStates);
                     sendResponse({ success: true });
                 } else {
