@@ -1,4 +1,4 @@
-import { getSettings } from '../utils/storage.js';
+import { getSettings, saveSettings } from '../utils/storage.js';
 
 let currentTab = null;
 let allTabs = [];
@@ -434,16 +434,11 @@ function renderTabItem(tab, groupColor = null) {
         countdownLabel = '';
         countdownClass = '';
     } else if (state) {
-        if (state.protected) {
-            // Tab is protected - show shield indicator (SVG)
+        if (state.protected || (state.hasMedia && settings.pauseOnMedia)) {
+            // Tab is protected or media playing - show shield indicator
             countdown = '<svg width="14" height="14" class="shield-icon"><use href="#icon-shield-filled"/></svg>';
-            countdownLabel = 'Protected';
+            countdownLabel = state.protected ? 'Protected' : 'Media';
             countdownClass = 'protected';
-        } else if (state.hasMedia && settings.pauseOnMedia) {
-            // Media is playing with pauseOnMedia enabled
-            countdown = '⏸';
-            countdownLabel = 'Media';
-            countdownClass = '';
         } else {
             countdown = formatTime(state.countdown);
             countdownLabel = '';
@@ -782,8 +777,9 @@ function updateCountdowns() {
         if (!state || state.countdown === null) return;
 
         if (state.protected || (state.hasMedia && settings.pauseOnMedia)) {
-            // Show shield icon if protected OR media is playing
+            // Protected or media playing - show shield icon
             timeEl.innerHTML = '<svg width="14" height="14" class="shield-icon"><use href="#icon-shield-filled"/></svg>';
+            countdownEl.className = 'countdown protected';
             return;
         }
 
@@ -832,11 +828,6 @@ function setupEventListeners() {
             }
         });
     }
-
-    // Settings button
-    document.getElementById('settingsBtn').addEventListener('click', () => {
-        chrome.runtime.openOptionsPage();
-    });
 
     // Protect/Unprotect button
     document.getElementById('protectBtn').addEventListener('click', async () => {
@@ -929,6 +920,76 @@ function setupEventListeners() {
     // Merge duplicate tabs button
     document.getElementById('mergeDuplicatesBtn').addEventListener('click', async () => {
         await mergeDuplicateTabs();
+    });
+
+    // Settings panel handlers
+    setupSettingsPanel();
+}
+
+// Setup settings panel
+function setupSettingsPanel() {
+    const settingsBtn = document.getElementById('settingsBtn');
+    const backToTabsBtn = document.getElementById('backToTabsBtn');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const currentTab = document.querySelector('.current-tab');
+    const tabsSection = document.querySelector('.tabs-section');
+
+    // Open settings panel
+    settingsBtn.addEventListener('click', () => {
+        currentTab.style.display = 'none';
+        tabsSection.style.display = 'none';
+        settingsPanel.style.display = 'flex';
+
+        // Populate settings values
+        document.getElementById('popupEnabledToggle').checked = settings.enabled;
+        document.getElementById('popupCountdownInput').value = settings.globalCountdown / 60;
+        document.getElementById('popupAutoClosePinned').checked = settings.autoClosePinned;
+        document.getElementById('popupPauseOnMedia').checked = settings.pauseOnMedia;
+    });
+
+    // Close settings panel
+    backToTabsBtn.addEventListener('click', () => {
+        settingsPanel.style.display = 'none';
+        currentTab.style.display = '';
+        tabsSection.style.display = '';
+    });
+
+    // Enable toggle
+    document.getElementById('popupEnabledToggle').addEventListener('change', async (e) => {
+        settings.enabled = e.target.checked;
+        await saveSettings(settings);
+        await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
+        updateExtensionStatus();
+        renderTabsList();
+    });
+
+    // Countdown number input
+    const countdownInput = document.getElementById('popupCountdownInput');
+
+    countdownInput.addEventListener('change', async (e) => {
+        let value = parseInt(e.target.value);
+        // Clamp value between 1 and 60
+        if (isNaN(value) || value < 1) value = 1;
+        if (value > 60) value = 60;
+        e.target.value = value;
+
+        settings.globalCountdown = value * 60;
+        await saveSettings(settings);
+        await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
+    });
+
+    // Auto-close pinned toggle
+    document.getElementById('popupAutoClosePinned').addEventListener('change', async (e) => {
+        settings.autoClosePinned = e.target.checked;
+        await saveSettings(settings);
+        await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
+    });
+
+    // Pause on media toggle
+    document.getElementById('popupPauseOnMedia').addEventListener('change', async (e) => {
+        settings.pauseOnMedia = e.target.checked;
+        await saveSettings(settings);
+        await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
     });
 }
 
