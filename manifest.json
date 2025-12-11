@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "QuIt Tab Manager",
+  "name": "QuIt Tabs",
   "version": "1.0.0",
   "description": "Automatically close inactive tabs with customizable countdown timers. Protect important tabs from auto-closing.",
   "icons": {
