@@ -417,6 +417,17 @@ function renderFlatTabs(tabs) {
     attachTabClickListeners();
 }
 
+// Check if a tab is a special tab (extension, new tab, chrome:// etc.)
+function isSpecialTab(tab) {
+    if (!tab.url) return true;
+    const url = tab.url.toLowerCase();
+    return url.startsWith('chrome://') ||
+        url.startsWith('chrome-extension://') ||
+        url.startsWith('about:') ||
+        url.startsWith('edge://') ||
+        url === 'chrome://newtab/';
+}
+
 // Render a single tab item
 function renderTabItem(tab, groupColor = null) {
     const state = tabStates[tab.id];
@@ -437,14 +448,16 @@ function renderTabItem(tab, groupColor = null) {
         countdownLabel = '';
         countdownClass = '';
     } else if (state) {
-        // Check if tab is protected (explicit, media, or pinned with setting disabled)
+        // Check if tab is protected (explicit, media, pinned, or special with setting disabled)
         const isPinnedProtected = tab.pinned && !settings.autoClosePinned;
+        const isSpecialProtected = isSpecialTab(tab) && !settings.autoCloseSpecial;
         const isMediaProtected = state.hasMedia && settings.pauseOnMedia;
 
-        if (state.protected || isMediaProtected || isPinnedProtected) {
+        if (state.protected || isMediaProtected || isPinnedProtected || isSpecialProtected) {
             // Tab is protected - show shield with label (vertical stack)
             let label = 'Protected';
-            if (isPinnedProtected) label = 'Pinned';
+            if (isSpecialProtected) label = 'Special';
+            else if (isPinnedProtected) label = 'Pinned';
             else if (isMediaProtected) label = 'Media';
             countdown = '<svg width="14" height="14" class="shield-icon"><use href="#icon-shield-filled"/></svg><span>' + label + '</span>';
             countdownLabel = '';
@@ -808,14 +821,16 @@ function updateCountdowns() {
 
         if (!state || state.countdown === null) return;
 
-        // Check if tab is protected (explicit, media, or pinned with setting disabled)
+        // Check if tab is protected (explicit, media, pinned, or special with setting disabled)
         const isPinnedProtected = tab && tab.pinned && !settings.autoClosePinned;
+        const isSpecialProtected = tab && isSpecialTab(tab) && !settings.autoCloseSpecial;
         const isMediaProtected = state.hasMedia && settings.pauseOnMedia;
 
-        if (state.protected || isMediaProtected || isPinnedProtected) {
+        if (state.protected || isMediaProtected || isPinnedProtected || isSpecialProtected) {
             // Protected - show shield icon with label
             let label = 'Protected';
-            if (isPinnedProtected) label = 'Pinned';
+            if (isSpecialProtected) label = 'Special';
+            else if (isPinnedProtected) label = 'Pinned';
             else if (isMediaProtected) label = 'Media';
             timeEl.innerHTML = '<svg width="14" height="14" class="shield-icon"><use href="#icon-shield-filled"/></svg><span>' + label + '</span>';
             countdownEl.className = 'countdown protected';
@@ -987,6 +1002,7 @@ function setupSettingsPanel() {
         document.getElementById('popupEnabledToggle').checked = settings.enabled;
         document.getElementById('popupCountdownInput').value = settings.globalCountdown / 60;
         document.getElementById('popupAutoClosePinned').checked = settings.autoClosePinned;
+        document.getElementById('popupAutoCloseSpecial').checked = settings.autoCloseSpecial;
         document.getElementById('popupPauseOnMedia').checked = settings.pauseOnMedia;
     });
 
@@ -1026,6 +1042,15 @@ function setupSettingsPanel() {
         settings.autoClosePinned = e.target.checked;
         await saveSettings(settings);
         await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
+        renderTabsList();
+    });
+
+    // Auto-close special toggle
+    document.getElementById('popupAutoCloseSpecial').addEventListener('change', async (e) => {
+        settings.autoCloseSpecial = e.target.checked;
+        await saveSettings(settings);
+        await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
+        renderTabsList();
     });
 
     // Pause on media toggle

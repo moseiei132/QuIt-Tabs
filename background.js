@@ -60,7 +60,17 @@ async function initialize() {
 
 // Update tab state when tab is created or updated
 async function updateTabState(tab, isActive = false) {
-    if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+    // Always skip tabs without URLs (incomplete tabs)
+    if (!tab.url) return;
+
+    // Check if this is a special tab (chrome://, extension, etc.)
+    const isSpecialTab = tab.url.startsWith('chrome://') ||
+        tab.url.startsWith('chrome-extension://') ||
+        tab.url.startsWith('about:') ||
+        tab.url.startsWith('edge://');
+
+    // Skip special tabs only if autoCloseSpecial is disabled
+    if (isSpecialTab && !settings.autoCloseSpecial) {
         return;
     }
 
