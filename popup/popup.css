@@ -597,22 +597,25 @@ svg use {
 
 .batch-actions {
   display: flex;
-  gap: 4px;
+  gap: 3px;
   align-items: center;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
 }
 
 .batch-select {
-  padding: 3px 6px;
+  padding: 2px 4px;
   border-radius: 4px;
   border: 0.5px solid var(--macos-divider);
   background: var(--macos-bg);
   color: var(--macos-text);
-  font-size: 10px;
+  font-size: 9px;
   font-family: inherit;
   cursor: pointer;
   outline: none;
-  min-width: 60px;
+  min-width: 50px;
+  max-width: 70px;
 }
 
 .batch-select:hover {
@@ -955,6 +958,158 @@ svg use {
 
 .status-indicator.disabled {
   background: var(--macos-text-secondary);
+}
+
+/* Settings Panel */
+.settings-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--macos-bg-secondary);
+  border-bottom: 0.5px solid var(--macos-divider);
+}
+
+.settings-header h2 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--macos-text);
+  margin: 0;
+}
+
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: var(--macos-bg-secondary);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  border: 0.5px solid var(--macos-divider);
+}
+
+.setting-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--macos-text);
+  margin-bottom: 2px;
+}
+
+.setting-desc {
+  display: block;
+  font-size: 11px;
+  color: var(--macos-text-secondary);
+}
+
+.setting-desc strong {
+  color: var(--macos-accent);
+}
+
+/* Toggle Switch (compact) */
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--macos-bg-tertiary);
+  transition: 0.2s;
+  border-radius: 24px;
+  border: 0.5px solid var(--macos-divider);
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 2px;
+  bottom: 1.5px;
+  background-color: white;
+  transition: 0.2s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.toggle input:checked + .toggle-slider {
+  background-color: var(--macos-green);
+  border-color: var(--macos-green);
+}
+
+.toggle input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+}
+
+/* Countdown Number Input */
+.countdown-input-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.countdown-number {
+  width: 50px;
+  padding: 4px 8px;
+  border: 0.5px solid var(--macos-divider);
+  border-radius: 6px;
+  background: var(--macos-bg);
+  color: var(--macos-text);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  outline: none;
+  font-family: inherit;
+  -moz-appearance: textfield;
+}
+
+.countdown-number::-webkit-outer-spin-button,
+.countdown-number::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.countdown-number:focus {
+  border-color: var(--macos-accent);
+}
+
+.countdown-unit {
+  font-size: 12px;
+  color: var(--macos-text-secondary);
 }
 
 /* Animations */
