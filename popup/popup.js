@@ -1004,6 +1004,7 @@ function setupSettingsPanel() {
         document.getElementById('popupAutoClosePinned').checked = settings.autoClosePinned;
         document.getElementById('popupAutoCloseSpecial').checked = settings.autoCloseSpecial;
         document.getElementById('popupPauseOnMedia').checked = settings.pauseOnMedia;
+        document.getElementById('popupFocusedWindowOnly').checked = settings.focusedWindowOnly;
     });
 
     // Close settings panel
@@ -1056,6 +1057,13 @@ function setupSettingsPanel() {
     // Pause on media toggle
     document.getElementById('popupPauseOnMedia').addEventListener('change', async (e) => {
         settings.pauseOnMedia = e.target.checked;
+        await saveSettings(settings);
+        await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
+    });
+
+    // Focused window only toggle
+    document.getElementById('popupFocusedWindowOnly').addEventListener('change', async (e) => {
+        settings.focusedWindowOnly = e.target.checked;
         await saveSettings(settings);
         await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
     });

@@ -4,7 +4,8 @@ const DEFAULT_SETTINGS = {
   globalCountdown: 3600, // 1 hour in seconds
   autoClosePinned: false,
   autoCloseSpecial: true, // Special tabs: extensions, new tab, chrome:// pages
-  pauseOnMedia: true
+  pauseOnMedia: true,
+  focusedWindowOnly: true // Only active tab in focused window is truly active
 };
 
 /**

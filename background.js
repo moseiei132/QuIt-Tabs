@@ -16,6 +16,7 @@ import { parseQuitParams, cleanQuitParams, hasQuitParams } from './utils/quit-in
 let tabStates = {};
 let settings = {};
 let activeTabsByWindow = {}; // Track active tab per window: { windowId: tabId }
+let focusedWindowId = null; // Track the currently focused window
 
 // Initialize extension
 async function initialize() {
@@ -39,6 +40,14 @@ async function initialize() {
         await updateTabState(tab);
     }
 
+    // Get the currently focused window
+    try {
+        const focusedWindow = await chrome.windows.getLastFocused();
+        focusedWindowId = focusedWindow.id;
+    } catch {
+        focusedWindowId = null;
+    }
+
     // Set the currently active tab for each window
     const windows = await chrome.windows.getAll();
     for (const window of windows) {
@@ -46,7 +55,9 @@ async function initialize() {
         if (activeTabs.length > 0) {
             const activeTab = activeTabs[0];
             activeTabsByWindow[window.id] = activeTab.id;
-            await updateTabState(activeTab, true);
+            // Only mark as truly active if this is the focused window (when setting enabled)
+            const isTrulyActive = !settings.focusedWindowOnly || window.id === focusedWindowId;
+            await updateTabState(activeTab, isTrulyActive);
         }
     }
 
@@ -124,9 +135,40 @@ async function onTabActivated(activeInfo) {
     // Update currently active tab for this window
     activeTabsByWindow[windowId] = activeInfo.tabId;
 
-    // Set new active tab (resets its countdown)
+    // Set new active tab (only truly active if this is the focused window)
+    const isTrulyActive = !settings.focusedWindowOnly || windowId === focusedWindowId;
     const tab = await chrome.tabs.get(activeInfo.tabId);
-    await updateTabState(tab, true);
+    await updateTabState(tab, isTrulyActive);
+    await saveTabStates(tabStates);
+}
+
+// Handle window focus change
+async function onWindowFocusChanged(newFocusedWindowId) {
+    const now = Date.now();
+    const previousFocusedWindowId = focusedWindowId;
+
+    // Update focused window (WINDOW_ID_NONE = -1 means no Chrome window focused)
+    focusedWindowId = newFocusedWindowId === chrome.windows.WINDOW_ID_NONE ? null : newFocusedWindowId;
+
+    // Only process if focusedWindowOnly setting is enabled
+    if (!settings.focusedWindowOnly) return;
+
+    // Start countdown on active tab in previously focused window
+    if (previousFocusedWindowId && activeTabsByWindow[previousFocusedWindowId]) {
+        const prevActiveTabId = activeTabsByWindow[previousFocusedWindowId];
+        if (tabStates[prevActiveTabId] && tabStates[prevActiveTabId].lastActiveTime === null) {
+            tabStates[prevActiveTabId].lastActiveTime = now;
+        }
+    }
+
+    // Reset countdown on active tab in newly focused window
+    if (focusedWindowId && activeTabsByWindow[focusedWindowId]) {
+        const newActiveTabId = activeTabsByWindow[focusedWindowId];
+        if (tabStates[newActiveTabId]) {
+            tabStates[newActiveTabId].lastActiveTime = null;
+        }
+    }
+
     await saveTabStates(tabStates);
 }
 
@@ -398,6 +440,7 @@ chrome.tabs.onActivated.addListener(onTabActivated);
 chrome.tabs.onUpdated.addListener(onTabUpdated);
 chrome.tabs.onCreated.addListener(onTabCreated);
 chrome.tabs.onRemoved.addListener(onTabRemoved);
+chrome.windows.onFocusChanged.addListener(onWindowFocusChanged);
 chrome.alarms.onAlarm.addListener(onAlarm);
 
 // Initialize on install or startup
