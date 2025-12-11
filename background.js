@@ -455,8 +455,19 @@ async function handleMessage(message, sender, sendResponse) {
             case 'unprotectTab':
                 if (tabStates[message.tabId]) {
                     tabStates[message.tabId].protected = false;
-                    // Restart countdown from beginning
-                    tabStates[message.tabId].lastActiveTime = Date.now();
+
+                    // Check if this tab is currently active
+                    const unprotectTab = await chrome.tabs.get(message.tabId);
+                    const isUnprotectTabActive = activeTabsByWindow[unprotectTab.windowId] === message.tabId;
+
+                    // Only start countdown if tab is not currently active
+                    if (isUnprotectTabActive) {
+                        // Tab is active - no countdown yet
+                        tabStates[message.tabId].lastActiveTime = null;
+                    } else {
+                        // Tab is inactive - restart countdown from beginning
+                        tabStates[message.tabId].lastActiveTime = Date.now();
+                    }
                     tabStates[message.tabId].countdown = settings.globalCountdown;
                     tabStates[message.tabId].initialCountdown = settings.globalCountdown;
                     await saveTabStates(tabStates);
