@@ -26,6 +26,9 @@ async function init() {
         // Update current tab display
         updateCurrentTab();
 
+        // Update extension status in footer
+        updateExtensionStatus();
+
         // Set up event listeners
         setupEventListeners();
 
@@ -148,6 +151,13 @@ function updateCurrentTabCountdown() {
     const state = tabStates[currentTab.id];
     const countdownEl = document.getElementById('currentTabCountdown');
     const timeEl = countdownEl.querySelector('.countdown-time');
+
+    // Show dash when extension is disabled
+    if (!settings.enabled) {
+        timeEl.textContent = '—';
+        countdownEl.className = 'countdown';
+        return;
+    }
 
     if (!state) {
         timeEl.textContent = '—';
@@ -417,7 +427,13 @@ function renderTabItem(tab, groupColor = null) {
     let countdown = '—';
     let countdownLabel = '';
     let countdownClass = '';
-    if (state) {
+
+    // Show dash when extension is disabled
+    if (!settings.enabled) {
+        countdown = '—';
+        countdownLabel = '';
+        countdownClass = '';
+    } else if (state) {
         if (state.protected) {
             // Tab is protected - show shield indicator (SVG)
             countdown = '<svg width="14" height="14" class="shield-icon"><use href="#icon-shield-filled"/></svg>';
@@ -753,6 +769,9 @@ function updateCountdowns() {
     // Update current tab countdown
     updateCurrentTabCountdown();
 
+    // Skip tab list updates when extension is disabled
+    if (!settings.enabled) return;
+
     // Update tab list countdowns
     document.querySelectorAll('.tab-item').forEach(item => {
         const tabId = parseInt(item.dataset.tabId);
@@ -862,6 +881,20 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Update extension status in footer
+function updateExtensionStatus() {
+    const statusIndicator = document.getElementById('statusIndicator');
+    const statusText = document.getElementById('statusText');
+
+    if (settings.enabled) {
+        statusIndicator.className = 'status-indicator active';
+        statusText.textContent = 'Active';
+    } else {
+        statusIndicator.className = 'status-indicator disabled';
+        statusText.textContent = 'Disabled';
+    }
 }
 
 // ============================================================================
