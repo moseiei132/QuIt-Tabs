@@ -147,26 +147,29 @@ async function onTabUpdated(tabId, changeInfo, tab) {
     // URL changed, reinitialize the tab
     if (changeInfo.url) {
         // Check for QuIt app integration parameters
-        await handleQuitIntegration(tabId, changeInfo.url, tab);
+        // If integration was handled, it manages state itself - don't overwrite
+        const wasHandled = await handleQuitIntegration(tabId, changeInfo.url, tab);
 
-        // Check if this tab is currently active in its window
-        const isActive = activeTabsByWindow[tab.windowId] === tabId;
-        await updateTabState(tab, isActive);
+        if (!wasHandled) {
+            // Only update state if not handled by QuIt integration
+            const isActive = activeTabsByWindow[tab.windowId] === tabId;
+            await updateTabState(tab, isActive);
+        }
     }
 
     await saveTabStates(tabStates);
 }
 
-// Handle QuIt app integration
+// Handle QuIt app integration - returns true if URL was handled
 async function handleQuitIntegration(tabId, url, tab) {
     // Check if URL has QuIt parameters
     if (!hasQuitParams(url)) {
-        return;
+        return false;
     }
 
     const params = parseQuitParams(url);
     if (!params) {
-        return;
+        return false;
     }
 
     console.log('QuIt Integration: Processing tab', tabId, 'with params:', params);
@@ -214,14 +217,23 @@ async function handleQuitIntegration(tabId, url, tab) {
         }
 
         // Apply auto-pause if requested
-        if (params.pause && tabStates[targetTabId]) {
-            tabStates[targetTabId].paused = true;
-            console.log('QuIt Integration: Set tab', targetTabId, 'as paused');
-        }
-
-        // Clean URL (remove quit_* parameters)
+        // Clean URL first (remove quit_* parameters) - this triggers onTabUpdated again
         await chrome.tabs.update(targetTabId, { url: cleanUrl });
         console.log('QuIt Integration: Cleaned URL for tab', targetTabId);
+
+        // Wait a moment for the URL update to settle, then apply pause
+        // We need to ensure tabStates exists for this tab before setting paused
+        if (params.pause) {
+            // Ensure tab state exists
+            if (!tabStates[targetTabId]) {
+                const targetTab = await chrome.tabs.get(targetTabId);
+                const isActive = activeTabsByWindow[targetTab.windowId] === targetTabId;
+                await updateTabState(targetTab, isActive);
+            }
+            tabStates[targetTabId].paused = true;
+            await saveTabStates(tabStates);
+            console.log('QuIt Integration: Set tab', targetTabId, 'as paused');
+        }
 
         // Close duplicate tab if we found one
         if (duplicateTab) {
@@ -229,8 +241,11 @@ async function handleQuitIntegration(tabId, url, tab) {
             console.log('QuIt Integration: Closed duplicate tab', tabId);
         }
 
+        return true;  // URL was handled
+
     } catch (error) {
         console.error('QuIt Integration: Error handling integration:', error);
+        return false;  // Let normal flow handle the tab
     }
 }
 
