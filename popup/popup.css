@@ -319,6 +319,17 @@ svg use {
   font-size: 14px;
 }
 
+.countdown.protected .countdown-time {
+  color: var(--macos-accent);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.shield-icon {
+  color: inherit;
+}
+
 /* Quick Actions */
 .quick-actions {
   display: flex;
@@ -770,6 +781,11 @@ svg use {
 
 .badge-media {
   background: var(--macos-red);
+  color: white;
+}
+
+.badge-protected {
+  background: var(--macos-accent);
   color: white;
 }
 
