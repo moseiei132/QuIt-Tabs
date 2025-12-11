@@ -865,13 +865,15 @@ function setupEventListeners() {
     // Current tab toggle
     const toggleCurrentTabBtn = document.getElementById('toggleCurrentTab');
     const currentTabContent = document.querySelector('.current-tab-content');
-    const toggleIcon = toggleCurrentTabBtn?.querySelector('.toggle-eye-icon');
     const compactTabInfo = document.getElementById('compactTabInfo');
 
-    if (toggleCurrentTabBtn && currentTabContent && toggleIcon) {
+    if (toggleCurrentTabBtn && currentTabContent) {
+        // Default state: expanded (active)
+        toggleCurrentTabBtn.classList.add('active');
+
         toggleCurrentTabBtn.addEventListener('click', () => {
             const isCollapsed = currentTabContent.classList.toggle('collapsed');
-            toggleIcon.classList.toggle('collapsed');
+            toggleCurrentTabBtn.classList.toggle('active', !isCollapsed);
 
             // Show/hide compact tab info
             if (compactTabInfo) {
