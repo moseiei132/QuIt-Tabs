@@ -130,10 +130,7 @@ QuIt-Tabs/
 │   ├── popup.js           # Popup logic, tab rendering, batch operations
 │   ├── popup.css          # Popup styling
 │   └── icons.svg          # SVG icon sprites
-├── options/               # Settings page
-│   ├── options.html
-│   ├── options.js
-│   └── options.css
+
 ├── utils/                 # Shared utilities
 │   ├── storage.js         # Settings and state persistence
 │   └── quit-integration.js # QuIt app URL parameter handling
