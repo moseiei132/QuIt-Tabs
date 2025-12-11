@@ -1,8 +1,9 @@
 // Default configuration
 const DEFAULT_SETTINGS = {
   enabled: true,
-  globalCountdown: 300, // 5 minutes in seconds
+  globalCountdown: 3600, // 1 hour in seconds
   autoClosePinned: false,
+  autoCloseSpecial: true, // Special tabs: extensions, new tab, chrome:// pages
   pauseOnMedia: true
 };
 
