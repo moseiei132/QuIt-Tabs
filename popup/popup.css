@@ -553,6 +553,13 @@ svg use {
 /* Adjust tab-item width in edit mode */
 .tabs-list.edit-mode .tab-item {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tabs-list.edit-mode .tab-row {
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* Tab Item */

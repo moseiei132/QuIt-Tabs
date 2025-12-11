@@ -980,19 +980,27 @@ async function mergeDuplicateTabs() {
         }
 
         // For each duplicate group, keep the most recently active tab and close the rest
+        // NEVER close protected tabs
         let closedCount = 0;
         const tabsToClose = [];
 
         duplicateGroups.forEach(group => {
-            // Sort by active status first, then by id (newer tabs have higher ids)
+            // Sort: protected first, then active, then by id (newer tabs have higher ids)
             group.sort((a, b) => {
+                const aProtected = tabStates[a.id]?.protected;
+                const bProtected = tabStates[b.id]?.protected;
+                // Protected tabs always kept first
+                if (aProtected && !bProtected) return -1;
+                if (!aProtected && bProtected) return 1;
+                // Then active tabs
                 if (a.active && !b.active) return -1;
                 if (!a.active && b.active) return 1;
                 return b.id - a.id; // Keep most recent (highest id)
             });
 
-            // Keep the first tab (active or most recent), close the rest
-            const toClose = group.slice(1);
+            // Keep the first tab (protected/active or most recent), close the rest
+            // But NEVER close protected tabs
+            const toClose = group.slice(1).filter(t => !tabStates[t.id]?.protected);
             tabsToClose.push(...toClose.map(t => t.id));
             closedCount += toClose.length;
         });
