@@ -321,14 +321,26 @@ async function onAlarm(alarm) {
 
     const now = Date.now();
     const activeTabs = await chrome.tabs.query({ active: true });
-    const activeTabIds = new Set(activeTabs.map(t => t.id));
+
+    // Determine which tabs are "truly active" based on focusedWindowOnly setting
+    let trulyActiveTabIds;
+    if (settings.focusedWindowOnly && focusedWindowId) {
+        // In single window mode, only the active tab in the focused window is truly active
+        trulyActiveTabIds = new Set(
+            activeTabs.filter(t => t.windowId === focusedWindowId).map(t => t.id)
+        );
+    } else {
+        // In multi-window mode, all active tabs are truly active
+        trulyActiveTabIds = new Set(activeTabs.map(t => t.id));
+    }
+
     const tabsToClose = [];
 
     for (const [tabId, state] of Object.entries(tabStates)) {
         const id = parseInt(tabId);
 
-        // Skip active tabs in any window
-        if (activeTabIds.has(id)) continue;
+        // Skip truly active tabs (depends on focusedWindowOnly setting)
+        if (trulyActiveTabIds.has(id)) continue;
 
         // Skip if countdown hasn't started yet (tab never left)
         if (state.lastActiveTime === null) continue;
@@ -358,10 +370,47 @@ async function onAlarm(alarm) {
         }
     }
 
-    // Close tabs
+    // Close tabs (handle last tab in window specially)
     if (tabsToClose.length > 0) {
         console.log('QuIt Tab Manager: Closing', tabsToClose.length, 'inactive tabs');
-        await chrome.tabs.remove(tabsToClose);
+
+        // Get all tabs to check if any are the last in their window
+        const allTabs = await chrome.tabs.query({});
+        const tabsByWindow = {};
+        allTabs.forEach(t => {
+            if (!tabsByWindow[t.windowId]) tabsByWindow[t.windowId] = [];
+            tabsByWindow[t.windowId].push(t.id);
+        });
+
+        const windowsToClose = [];
+        const tabsToRemove = [];
+
+        for (const tabId of tabsToClose) {
+            const tab = allTabs.find(t => t.id === tabId);
+            if (!tab) continue;
+
+            // Check if this is the last tab in its window
+            if (tabsByWindow[tab.windowId] && tabsByWindow[tab.windowId].length === 1) {
+                // Close the entire window instead
+                windowsToClose.push(tab.windowId);
+            } else {
+                tabsToRemove.push(tabId);
+            }
+        }
+
+        // Close windows (which closes their last tab)
+        for (const windowId of windowsToClose) {
+            try {
+                await chrome.windows.remove(windowId);
+            } catch (e) {
+                console.error('Error closing window:', e);
+            }
+        }
+
+        // Close regular tabs
+        if (tabsToRemove.length > 0) {
+            await chrome.tabs.remove(tabsToRemove);
+        }
 
         // Clean up states
         tabsToClose.forEach(id => delete tabStates[id]);
