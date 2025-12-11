@@ -75,16 +75,20 @@
   <div class="container">
     <!-- Header -->
     <header class="header">
-      <div class="logo">
-        <svg class="logo-icon" width="18" height="18">
-          <use href="#icon-clock" />
-        </svg>
-        <h1>QuIt</h1>
-      </div>
-      <!-- Compact current tab info (shown when section collapsed) -->
-      <div id="compactTabInfo" class="compact-tab-info" style="display: none;">
-        <span id="compactTitle" class="compact-title"></span>
-        <span id="compactStatus" class="compact-status"></span>
+      <div class="header-left">
+        <div class="logo">
+          <svg class="logo-icon" width="18" height="18">
+            <use href="#icon-clock" />
+          </svg>
+          <h1>QuIt</h1>
+        </div>
+        <!-- Compact current tab info (shown when section collapsed) -->
+        <div id="compactTabInfo" class="compact-tab-info" style="display: none;">
+          <span class="compact-divider">|</span>
+          <img id="compactFavicon" class="compact-favicon" src="" alt="">
+          <span id="compactTitle" class="compact-title"></span>
+          <span id="compactCountdown" class="compact-countdown"></span>
+        </div>
       </div>
       <div class="header-actions">
         <button id="toggleCurrentTab" class="icon-btn" title="Toggle Current Tab">
