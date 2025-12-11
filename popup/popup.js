@@ -454,13 +454,11 @@ function renderTabItem(tab, groupColor = null) {
     }
 
     const badges = [];
-    // Protected status is shown via shield icon in countdown, no badge needed
+    // Protected/Media status is shown via shield icon in countdown, no badge needed
     if (tab.pinned) {
         badges.push('<span class="badge badge-pinned">Pinned</span>');
     }
-    if (tab.audible) {
-        badges.push('<span class="badge badge-media"><svg width="10" height="10"><use href="#icon-play" /></svg></span>');
-    }
+    // Removed audible badge since media status is shown in countdown area
 
     const title = tab.title || 'Untitled';
 
