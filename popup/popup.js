@@ -435,12 +435,14 @@ function renderTabItem(tab, groupColor = null) {
         countdownClass = '';
     } else if (state) {
         if (state.protected || (state.hasMedia && settings.pauseOnMedia)) {
-            // Tab is protected or media playing - show shield indicator
-            countdown = '<svg width="14" height="14" class="shield-icon"><use href="#icon-shield-filled"/></svg>';
-            countdownLabel = state.protected ? 'Protected' : 'Media';
+            // Tab is protected or media playing - show shield with label (vertical stack)
+            const label = state.protected ? 'Protected' : 'Media';
+            countdown = '<svg width="14" height="14" class="shield-icon"><use href="#icon-shield-filled"/></svg><span>' + label + '</span>';
+            countdownLabel = '';
             countdownClass = 'protected';
         } else {
-            countdown = formatTime(state.countdown);
+            // Regular countdown - time with LEFT label
+            countdown = '<span class="time-value">' + formatTime(state.countdown) + '</span><span>Left</span>';
             countdownLabel = '';
             if (state.countdown > 180) countdownClass = 'high';
             else if (state.countdown > 60) countdownClass = 'medium';
@@ -777,8 +779,9 @@ function updateCountdowns() {
         if (!state || state.countdown === null) return;
 
         if (state.protected || (state.hasMedia && settings.pauseOnMedia)) {
-            // Protected or media playing - show shield icon
-            timeEl.innerHTML = '<svg width="14" height="14" class="shield-icon"><use href="#icon-shield-filled"/></svg>';
+            // Protected or media playing - show shield icon with label
+            const label = state.protected ? 'Protected' : 'Media';
+            timeEl.innerHTML = '<svg width="14" height="14" class="shield-icon"><use href="#icon-shield-filled"/></svg><span>' + label + '</span>';
             countdownEl.className = 'countdown protected';
             return;
         }
@@ -786,9 +789,9 @@ function updateCountdowns() {
         // Calculate current countdown based on background's tracking
         let remaining;
         if (state.lastActiveTime === null) {
-            // Tab is active - show active text
-            timeEl.textContent = 'Active';
-            countdownEl.className = 'countdown high';
+            // Tab is active - show eye icon with Active text (vertical stack)
+            timeEl.innerHTML = '<svg width="14" height="14" class="active-icon"><use href="#icon-eye"/></svg><span>Active</span>';
+            countdownEl.className = 'countdown active';
             return;
         } else {
             // Tab is inactive - calculate elapsed time
@@ -796,7 +799,7 @@ function updateCountdowns() {
             remaining = Math.max(0, (state.initialCountdown || state.countdown) - inactiveTime);
         }
 
-        timeEl.textContent = formatTime(remaining);
+        timeEl.innerHTML = '<span class="time-value">' + formatTime(remaining) + '</span><span>Left</span>';
 
         // Update color
         countdownEl.className = 'countdown';

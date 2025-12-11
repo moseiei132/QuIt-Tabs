@@ -282,16 +282,37 @@ svg use {
 .countdown {
   display: flex;
   align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   flex-direction: column;
   gap: 2px;
+  width: 55px;
+  min-height: 32px;
+  text-align: center;
 }
 
 .countdown-time {
-  font-size: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  height: 100%;
+}
+
+.countdown-time .time-value {
+  font-size: 14px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.3px;
+  line-height: 1;
+}
+
+.countdown-time > span:last-child {
+  font-size: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .countdown-label {
@@ -319,15 +340,31 @@ svg use {
   font-size: 14px;
 }
 
-.countdown.protected .countdown-time {
-  color: var(--macos-accent);
+.countdown.protected .countdown-time,
+.countdown.active .countdown-time {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
+  font-size: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.shield-icon {
+.countdown.protected .countdown-time {
+  color: var(--macos-accent);
+}
+
+.countdown.active .countdown-time {
+  color: var(--macos-green);
+}
+
+.shield-icon,
+.active-icon {
   color: inherit;
+  width: 14px;
+  height: 14px;
 }
 
 /* Quick Actions */
