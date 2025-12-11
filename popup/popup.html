@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QuIt Tab Manager</title>
   <link rel="stylesheet" href="popup.css">
-  <link rel="stylesheet" href="modal.css">
 </head>
 
 <body>
@@ -36,6 +35,10 @@
       </symbol>
       <symbol id="icon-shield" viewBox="0 0 24 24">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-shield-filled" viewBox="0 0 24 24">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="currentColor" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round" />
       </symbol>
       <symbol id="icon-folder" viewBox="0 0 24 24">
@@ -113,16 +116,11 @@
         </div>
 
         <div class="quick-actions">
-          <button id="pauseBtn" class="btn btn-secondary" title="Pause">
-            <svg width="14" height="14" id="pauseIcon">
-              <use href="#icon-pause" />
-            </svg>
-          </button>
-          <button id="addDomainBtn" class="btn btn-secondary">
-            <svg width="14" height="14">
+          <button id="protectBtn" class="btn btn-secondary" title="Protect this tab">
+            <svg width="14" height="14" id="protectIcon">
               <use href="#icon-shield" />
             </svg>
-            Exclude
+            Protected
           </button>
         </div>
     </section>
@@ -200,101 +198,6 @@
       <div class="context-menu-items"></div>
     </div>
 
-  </div>
-
-  <!-- Exclusion Rule Modal -->
-  <div id="exclusionModal" class="modal" style="display: none;">
-    <div class="modal-backdrop"></div>
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Add Exclusion Rule</h3>
-        <button id="closeModal" class="icon-btn">
-          <svg width="16" height="16">
-            <use href="#icon-close" />
-          </svg>
-        </button>
-      </div>
-
-      <div class="modal-body">
-        <!-- Row 1: Preview (Fixed) -->
-        <div class="preview-section">
-          <div class="preview-title">What will be protected:</div>
-          <div class="preview-examples" id="previewExamples">
-            <div class="preview-item preview-match">✓ example.com</div>
-            <div class="preview-item preview-no-match">✗ sub.example.com</div>
-          </div>
-        </div>
-
-        <!-- Row 2: Scrollable Options -->
-        <div class="scroll-section">
-          <div class="form-group">
-            <label>What should stay open?</label>
-            <div class="rule-type-options">
-              <label class="radio-option">
-                <div class="radio-header">
-                  <input type="radio" name="ruleType" value="path_exact" checked>
-                  <span class="radio-title">Just this page</span>
-                </div>
-                <div class="radio-desc" id="previewPageOnly">example.com/videos/watch</div>
-              </label>
-
-              <label class="radio-option">
-                <div class="radio-header">
-                  <input type="radio" name="ruleType" value="domain_path">
-                  <span class="radio-title">This whole site</span>
-                </div>
-                <div class="radio-desc" id="previewWholeSite">Any page on example.com</div>
-              </label>
-
-              <label class="radio-option">
-                <div class="radio-header">
-                  <input type="radio" name="ruleType" value="domain_all">
-                  <span class="radio-title">Site + related sites</span>
-                </div>
-                <div class="radio-desc" id="previewSiteAndRelated">example.com + api.example.com</div>
-              </label>
-
-              <label class="radio-option">
-                <div class="radio-header">
-                  <input type="radio" name="ruleType" value="regex">
-                  <span class="radio-title">Custom pattern (advanced)</span>
-                </div>
-                <div class="radio-desc-text">Use your own regex pattern</div>
-              </label>
-            </div>
-          </div>
-
-          <!-- Regex Input Field (only shown when regex is selected) -->
-          <div class="form-group" id="regexInputGroup" style="display: none;">
-            <label for="regexPattern">Regular Expression</label>
-            <input type="text" id="regexPattern" class="regex-input" placeholder="^https://.*\.example\.com/.*$">
-            <div class="regex-help">
-              <span class="regex-help-text">Example: <code>^https://github\.com/.*/issues$</code></span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <!-- Query Parameters Toggle (works with all rule types except regex) -->
-        <div class="footer-toggle" id="queryStringGroup">
-          <button id="queryStringToggle" class="toggle-btn toggle-with-tooltip" data-checked="true">
-            <svg width="14" height="14" class="toggle-icon">
-              <use href="#icon-link" />
-            </svg>
-            <span class="toggle-text">Include query parameters</span>
-            <span class="tooltip-content">
-              <strong>Include for:</strong> YouTube videos (?v=abc), specific items<br>
-              <strong>Exclude for:</strong> Search pages (?page=2), pagination
-            </span>
-          </button>
-        </div>
-        <div class="footer-buttons">
-          <button id="cancelExclude" class="btn btn-secondary">Cancel</button>
-          <button id="confirmExclude" class="btn btn-primary">Add Rule</button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <script src="popup.js" type="module"></script>

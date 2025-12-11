@@ -1,5 +1,4 @@
 import { getSettings, getTabStates, saveTabStates } from './utils/storage.js';
-import { findBestMatch } from './utils/matcher.js';
 import { parseQuitParams, cleanQuitParams, hasQuitParams } from './utils/quit-integration.js';
 
 // Tab states structure:
@@ -10,7 +9,7 @@ import { parseQuitParams, cleanQuitParams, hasQuitParams } from './utils/quit-in
 //     countdown: number (seconds remaining),
 //     isPinned: boolean,
 //     hasMedia: boolean,
-//     matchedRule: Object | null
+//     protected: boolean
 //   }
 // }
 
@@ -66,15 +65,9 @@ async function updateTabState(tab, isActive = false) {
     }
 
     const existingState = tabStates[tab.id];
-    const matchedRule = findBestMatch(tab.url, settings.exclusionRules);
 
-    // Determine countdown based on matched rule or global setting
-    let countdown;
-    if (matchedRule && matchedRule.customCountdown !== undefined) {
-        countdown = matchedRule.customCountdown; // null = never close
-    } else {
-        countdown = settings.globalCountdown;
-    }
+    // Use global countdown setting
+    let countdown = settings.globalCountdown;
 
     const now = Date.now();
 
@@ -99,8 +92,7 @@ async function updateTabState(tab, isActive = false) {
         initialCountdown: countdown, // Store initial value for reset
         isPinned: tab.pinned || false,
         hasMedia: tab.audible || false,
-        matchedRule: matchedRule,
-        paused: existingState?.paused || false // Preserve existing paused state
+        protected: existingState?.protected || false // Preserve existing protected state
     };
 }
 
@@ -216,13 +208,13 @@ async function handleQuitIntegration(tabId, url, tab) {
             await chrome.tabs.group({ tabIds: [targetTabId], groupId });
         }
 
-        // Apply auto-pause if requested
+        // Apply auto-protect if requested
         // Clean URL first (remove quit_* parameters) - this triggers onTabUpdated again
         await chrome.tabs.update(targetTabId, { url: cleanUrl });
         console.log('QuIt Integration: Cleaned URL for tab', targetTabId);
 
-        // Wait a moment for the URL update to settle, then apply pause
-        // We need to ensure tabStates exists for this tab before setting paused
+        // Wait a moment for the URL update to settle, then apply protection
+        // We need to ensure tabStates exists for this tab before setting protected
         if (params.pause) {
             // Ensure tab state exists
             if (!tabStates[targetTabId]) {
@@ -230,9 +222,9 @@ async function handleQuitIntegration(tabId, url, tab) {
                 const isActive = activeTabsByWindow[targetTab.windowId] === targetTabId;
                 await updateTabState(targetTab, isActive);
             }
-            tabStates[targetTabId].paused = true;
+            tabStates[targetTabId].protected = true;
             await saveTabStates(tabStates);
-            console.log('QuIt Integration: Set tab', targetTabId, 'as paused');
+            console.log('QuIt Integration: Set tab', targetTabId, 'as protected');
         }
 
         // Close duplicate tab if we found one
@@ -295,8 +287,8 @@ async function onAlarm(alarm) {
         // Skip pinned tabs if setting is disabled
         if (state.isPinned && !settings.autoClosePinned) continue;
 
-        // Skip if paused
-        if (state.paused) continue;
+        // Skip if protected
+        if (state.protected) continue;
 
         // Pause countdown if media is playing and setting enabled
         if (state.hasMedia && settings.pauseOnMedia) continue;
@@ -349,9 +341,9 @@ async function handleMessage(message, sender, sendResponse) {
                 sendResponse({ success: true, data: settings });
                 break;
 
-            case 'pauseTab':
+            case 'protectTab':
                 if (tabStates[message.tabId]) {
-                    tabStates[message.tabId].paused = true;
+                    tabStates[message.tabId].protected = true;
                     await saveTabStates(tabStates);
                     sendResponse({ success: true });
                 } else {
@@ -359,9 +351,9 @@ async function handleMessage(message, sender, sendResponse) {
                 }
                 break;
 
-            case 'resumeTab':
+            case 'unprotectTab':
                 if (tabStates[message.tabId]) {
-                    tabStates[message.tabId].paused = false;
+                    tabStates[message.tabId].protected = false;
                     await saveTabStates(tabStates);
                     sendResponse({ success: true });
                 } else {
