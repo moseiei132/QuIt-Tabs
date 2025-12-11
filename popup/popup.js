@@ -574,12 +574,32 @@ function updateBatchActionsBar() {
             groupSelect.innerHTML += `<option value="${id}">${escapeHtml(info.title)}</option>`;
         });
 
-        // Populate window dropdown
+        // Populate window dropdown with active tab titles
         const windowSelect = document.getElementById('moveToWindowSelect');
-        const windows = [...new Set(allTabs.map(t => t.windowId))];
+        const windowIds = [...new Set(allTabs.map(t => t.windowId))];
         windowSelect.innerHTML = '<option value="">Window...</option>';
-        windows.forEach(wId => {
-            windowSelect.innerHTML += `<option value="${wId}">Window ${wId}</option>`;
+
+        windowIds.forEach(wId => {
+            // Find active tab in this window
+            const windowTabs = allTabs.filter(t => t.windowId === wId);
+            const activeTab = windowTabs.find(t => t.active) || windowTabs[0];
+            const activeTitle = activeTab?.title || 'Window';
+
+            // Truncate title for display
+            const displayTitle = activeTitle.length > 25 ? activeTitle.substring(0, 25) + '…' : activeTitle;
+
+            // Create tooltip with all tab titles (truncated)
+            const allTitles = windowTabs.map(t => {
+                const title = t.title || 'Untitled';
+                return title.length > 30 ? title.substring(0, 30) + '...' : title;
+            }).join('\n• ');
+            const tooltip = `${windowTabs.length} tabs:\n• ${allTitles}`;
+
+            const option = document.createElement('option');
+            option.value = wId;
+            option.textContent = displayTitle;
+            option.title = tooltip;
+            windowSelect.appendChild(option);
         });
     } else {
         batchBar.style.display = 'none';
