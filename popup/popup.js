@@ -129,6 +129,9 @@ function updateProtectButton() {
     const protectBtn = document.getElementById('protectBtn');
     const protectIcon = document.getElementById('protectIcon');
 
+    // Skip if icon doesn't exist (button might be in Cancel mode)
+    if (!protectIcon) return;
+
     if (state && state.protected) {
         // Tab is protected - show filled shield
         protectIcon.innerHTML = '<use href="#icon-shield-filled"/>';
@@ -925,6 +928,78 @@ function setupEventListeners() {
             renderTabsList();
         }
     });
+
+    // Quit All button - close all countdown tabs (exclude protected, active, pinned)
+    const quitAllBtn = document.getElementById('quitAllBtn');
+    let quitConfirmMode = false;
+
+    quitAllBtn.addEventListener('click', async () => {
+        if (!quitConfirmMode) {
+            // First click - enter confirm mode
+            quitConfirmMode = true;
+            quitAllBtn.textContent = 'Confirm';
+            protectBtn.innerHTML = 'Cancel';
+            protectBtn.classList.add('btn-cancel');
+            // Swap positions to prevent accidental double-click
+            protectBtn.style.order = '2';
+            quitAllBtn.style.order = '1';
+            return;
+        }
+
+        // Second click - execute quit all
+        const tabsToClose = [];
+
+        for (const tab of allTabs) {
+            // Skip current active tab
+            if (tab.active && tab.windowId === currentTab?.windowId) continue;
+
+            const state = tabStates[tab.id];
+            if (!state) continue;
+
+            // Skip protected tabs
+            if (state.protected) continue;
+
+            // Skip pinned tabs if setting is disabled
+            if (tab.pinned && !settings.autoClosePinned) continue;
+
+            // Skip media playing tabs if setting is enabled
+            if (state.hasMedia && settings.pauseOnMedia) continue;
+
+            // Skip tabs without countdown
+            if (state.countdown === null) continue;
+
+            tabsToClose.push(tab.id);
+        }
+
+        if (tabsToClose.length > 0) {
+            await chrome.tabs.remove(tabsToClose);
+            await loadAllTabs();
+        }
+
+        // Reset confirm mode
+        resetQuitConfirmMode();
+    });
+
+    // Cancel quit all when clicking protect button in confirm mode
+    protectBtn.addEventListener('click', async (e) => {
+        if (quitConfirmMode) {
+            e.stopImmediatePropagation();
+            resetQuitConfirmMode();
+            return;
+        }
+    }, true);
+
+    function resetQuitConfirmMode() {
+        quitConfirmMode = false;
+        quitAllBtn.textContent = 'Quit All';
+        // Restore protected button HTML with icon
+        protectBtn.innerHTML = '<svg width="14" height="14" id="protectIcon"><use href="#icon-shield" /></svg> Protected';
+        protectBtn.classList.remove('btn-cancel');
+        // Reset positions
+        protectBtn.style.order = '';
+        quitAllBtn.style.order = '';
+        updateProtectButton();
+    }
 
     // Edit Mode toggle
     document.getElementById('editModeBtn').addEventListener('click', () => {
