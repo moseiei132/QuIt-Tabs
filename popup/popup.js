@@ -689,10 +689,8 @@ function initializeSortable() {
         ghostClass: 'sortable-ghost',
         chosenClass: 'sortable-chosen',
         dragClass: 'sortable-drag',
-        handle: '.tab-item',  // Only tab items are draggable
+        handle: '.tab-item, .group-header-row',  // Allow dragging tabs AND group headers
         draggable: '.tab-row', // The row is what moves
-        filter: '.group-header-row', // Exclude group headers from dragging
-
         // Smooth animations
         forceFallback: false,
 
@@ -700,6 +698,20 @@ function initializeSortable() {
         onStart: function (evt) {
             const tabsList = document.getElementById('tabsList');
             if (tabsList) tabsList.classList.add('dragging-active');
+
+            // If dragging a group header, hide all tabs in that group
+            const draggedRow = evt.item;
+            if (draggedRow.classList.contains('group-header-row')) {
+                const groupId = parseInt(draggedRow.dataset.groupId);
+                const allRows = Array.from(tabsList.querySelectorAll('.tab-row'));
+
+                allRows.forEach(row => {
+                    const item = row.querySelector('.tab-item');
+                    if (item && parseInt(item.dataset.groupId) === groupId) {
+                        row.classList.add('hidden-by-group-drag');
+                    }
+                });
+            }
         },
 
         // Called when dragging ends (drop or cancel)
@@ -707,11 +719,94 @@ function initializeSortable() {
             const tabsList = document.getElementById('tabsList');
             if (tabsList) tabsList.classList.remove('dragging-active');
 
+            // Show any hidden group tabs
+            document.querySelectorAll('.hidden-by-group-drag').forEach(el => {
+                el.classList.remove('hidden-by-group-drag');
+            });
+
             // If position didn't change, do nothing
             if (evt.oldIndex === evt.newIndex) return;
 
-            // Get the dragged tab ID from data attribute
             const draggedRow = evt.item;
+
+            // HANDLE GROUP MOVE
+            if (draggedRow.classList.contains('group-header-row')) {
+                const groupId = parseInt(draggedRow.dataset.groupId);
+
+                // Calculate new index
+                // We need the index of the tab immediately following the dropped header
+                // ignoring the tabs of the moved group (since they move with it)
+                const allRows = Array.from(tabsList.querySelectorAll('.tab-row'));
+                const newIndex = allRows.indexOf(draggedRow);
+
+                let targetIndex = -1;
+
+                // Find next visible row (not hidden by drag, and not the dragged row itself)
+                // Note: hidden class is already removed above, so we rely on current DOM state.
+                // But wait, if we moved the header down, the tabs of that group are now spatially "above" it in DOM if we didn't move them.
+                // This creates a broken state until we reload.
+                // So we must be careful to look at rows that are NOT part of the moved group.
+
+                // Simple approach: find the first row after newIndex that is NOT part of the moved group.
+                let nextValidRow = null;
+                for (let i = newIndex + 1; i < allRows.length; i++) {
+                    const row = allRows[i];
+                    if (row.classList.contains('group-header-row')) {
+                        nextValidRow = row;
+                        break;
+                    }
+                    const item = row.querySelector('.tab-item');
+                    if (item && parseInt(item.dataset.groupId) !== groupId) {
+                        nextValidRow = row;
+                        break;
+                    }
+                }
+
+                if (nextValidRow) {
+                    if (nextValidRow.classList.contains('group-header-row')) {
+                        // Find first tab of that group
+                        const nextGroupId = parseInt(nextValidRow.dataset.groupId);
+                        const nextGroupFirstTab = allTabs.find(t => t.groupId === nextGroupId); // Use allTabs (pre-move state)
+                        if (nextGroupFirstTab) targetIndex = nextGroupFirstTab.index;
+                    } else {
+                        const nextItem = nextValidRow.querySelector('.tab-item');
+                        const nextTabId = parseInt(nextItem.dataset.tabId);
+                        const nextTab = allTabs.find(t => t.id === nextTabId);
+                        if (nextTab) targetIndex = nextTab.index;
+                    }
+
+                    // Adjustment for moving from Low Index to High Index
+                    // If the group was originally BEFORE the target position, removing it shifts the target index down.
+                    // We need to subtract the group size from the target index.
+                    if (targetIndex !== -1) {
+                        const groupTabs = allTabs.filter(t => t.groupId === groupId).sort((a, b) => a.index - b.index);
+                        if (groupTabs.length > 0) {
+                            const groupStartIndex = groupTabs[0].index;
+                            const groupSize = groupTabs.length;
+
+                            if (groupStartIndex < targetIndex) {
+                                targetIndex = Math.max(0, targetIndex - groupSize);
+                            }
+                        }
+                    }
+
+                } else {
+                    // No next valid row -> move to end
+                    targetIndex = -1;
+                }
+
+                try {
+                    console.log('Moving group', groupId, 'to index', targetIndex);
+                    await chrome.tabGroups.move(groupId, { index: targetIndex });
+                    await loadAllTabs();
+                } catch (error) {
+                    console.error('Error moving group:', error);
+                    await loadAllTabs();
+                }
+                return;
+            }
+
+            // HANDLE SINGLE TAB MOVE
             const draggedItem = draggedRow.querySelector('.tab-item');
             if (!draggedItem) return;
 

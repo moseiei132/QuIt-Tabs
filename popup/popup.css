@@ -1039,7 +1039,10 @@ svg use {
    End Sortable.js Animations
    ======================================== */
 
-/* Footer */
+/* Utility class to hide tabs when their group header is being dragged */
+.hidden-by-group-drag {
+  display: none !important;
+}
 .footer {
   display: flex;
   align-items: center;
