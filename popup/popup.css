@@ -606,6 +606,7 @@ svg use {
   align-items: center;
   gap: 8px;
   margin-bottom: 2px;
+  transition: transform 0.2s ease-out, opacity 0.2s ease;
 }
 
 .tab-checkbox-outer {
@@ -644,9 +645,11 @@ svg use {
   background: transparent;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.1s ease;
+  transition: all 0.2s ease, transform 0.2s ease-out, opacity 0.2s ease;
   border: 0.5px solid transparent;
   width: 100%;
+  position: relative;
+  will-change: transform, opacity;
 }
 
 /* Batch Actions Bar */
@@ -889,40 +892,76 @@ svg use {
   letter-spacing: 0.3px;
 }
 
-/* Tab Group */
+/* Tab Groups */
 .tab-group {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .tab-group-header {
-  font-size: 11px;
-  color: var(--macos-text);
-  padding: 6px 10px;
-  background: var(--macos-bg-secondary);
-  border-radius: 5px;
-  margin-bottom: 4px;
-  font-weight: 500;
+  padding: 8px 12px;
   display: flex;
   align-items: center;
   gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--macos-text-secondary);
+  border-bottom: 1px solid var(--macos-divider);
+  background: var(--macos-bg-secondary);
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
-.group-indicator {
+.tab-group-header .group-indicator {
   width: 12px;
   height: 12px;
   border-radius: 3px;
   flex-shrink: 0;
 }
 
-.group-title {
+.tab-group-header .group-title {
   flex: 1;
-  font-weight: 500;
 }
 
-.group-count {
+.tab-group-header .group-count {
+  opacity: 0.6;
+  font-size: 11px;
+}
+
+/* Flattened group header row (new structure for drag support) */
+.group-header-row {
+  user-select: none;
+  cursor: default !important;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.group-header-item {
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 10px;
+  font-weight: 500;
   color: var(--macos-text-secondary);
-  font-weight: 400;
+  border-bottom: 1px solid var(--macos-divider);
+  background: var(--macos-bg-secondary);
+  cursor: default !important;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 2px;
+}
+
+.group-header-item .group-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.group-header-item .group-title {
+  flex: 1;
 }
 
 /* Inline Tab Group (for window mode) */
@@ -960,6 +999,45 @@ svg use {
   color: var(--macos-text-secondary);
   font-size: 13px;
 }
+
+/* ========================================
+   Sortable.js Drag and Drop Animations
+   ======================================== */
+
+/* Ghost element - the placeholder showing where item will drop */
+.sortable-ghost {
+  opacity: 0.4;
+  background: var(--macos-bg-secondary);
+}
+
+/* Chosen element - the item being dragged */
+.sortable-chosen {
+  opacity: 0.7;
+}
+
+/* Drag element - the visual copy that follows cursor */
+.sortable-drag {
+  opacity: 0.9;
+  box-shadow: 0 8px 24px var(--macos-shadow-strong);
+}
+
+/* Smooth transitions for items shifting during drag */
+.tabs-list.dragging-active .tab-row {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Cursor states */
+.tab-item {
+  cursor: grab;
+}
+
+.tab-item:active {
+  cursor: grabbing;
+}
+
+/* ========================================
+   End Sortable.js Animations
+   ======================================== */
 
 /* Footer */
 .footer {
@@ -1013,7 +1091,7 @@ svg use {
   outline: none;
   width: 100%;
   font-family: inherit;
-  padding-left: 2px;
+  padding-bottom: 4px;
 }
 
 .footer-search input::placeholder {

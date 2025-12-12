@@ -347,14 +347,15 @@ function renderGroupedTabs(tabs) {
 
     listEl.innerHTML = html;
     attachTabClickListeners();
+    initializeSortable();
 }
 
 // Render tabs grouped by Chrome tab groups (respecting real tab order)
+// Uses flat structure with group headers as separator items
 function renderGroupsByTabGroups(tabs) {
     const listEl = document.getElementById('tabsList');
 
     // Sort tabs by windowId first, then by their actual index (Chrome tab order)
-    // This ensures tabs from different windows are not mixed together
     const sortedTabs = [...tabs].sort((a, b) => {
         if (a.windowId !== b.windowId) {
             return a.windowId - b.windowId;
@@ -362,55 +363,39 @@ function renderGroupsByTabGroups(tabs) {
         return a.index - b.index;
     });
 
-    // Group consecutive tabs that share the same groupId
-    const sections = [];
-    let currentSection = null;
+    // Build flat list with group headers inserted
+    let html = '';
+    let lastGroupId = null;
 
     sortedTabs.forEach(tab => {
         const tabGroupId = tab.groupId;
         const isGrouped = tabGroupId && tabGroupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && tabGroupId !== -1;
 
-        // Check if we should start a new section
-        if (!currentSection || currentSection.groupId !== tabGroupId) {
-            currentSection = {
-                groupId: tabGroupId,
-                isGrouped: isGrouped,
-                tabs: [tab]
-            };
-            sections.push(currentSection);
-        } else {
-            // Add to current section
-            currentSection.tabs.push(tab);
-        }
-    });
-
-    // Render sections
-    let html = '';
-    sections.forEach(section => {
-        if (section.isGrouped) {
-            // Render grouped section
-            const groupInfo = tabGroups[section.groupId];
+        // If group changed, insert group header
+        if (isGrouped && lastGroupId !== tabGroupId) {
+            const groupInfo = tabGroups[tabGroupId];
             const groupTitle = groupInfo?.title || 'Unknown Group';
             const groupColor = groupInfo?.color || 'grey';
 
             html += `
-      <div class="tab-group">
-        <div class="tab-group-header" data-color="${groupColor}">
-          <span class="group-indicator" style="background-color: var(--group-${groupColor});"></span>
-          <span class="group-title">${escapeHtml(groupTitle)}</span>
-          <span class="group-count">(${section.tabs.length})</span>
-        </div>
-        ${section.tabs.map(tab => renderTabItem(tab, groupColor)).join('')}
-      </div>
-    `;
-        } else {
-            // Render ungrouped section (no header)
-            html += section.tabs.map(tab => renderTabItem(tab)).join('');
+                <div class="tab-row group-header-row" data-group-id="${tabGroupId}">
+                    <div class="group-header-item" data-color="${groupColor}">
+                        <span class="group-indicator" style="background-color: var(--group-${groupColor});"></span>
+                        <span class="group-title">${escapeHtml(groupTitle)}</span>
+                    </div>
+                </div>
+            `;
         }
+
+        // Render the tab item (all tabs are now in .tab-row for consistent dragging)
+        html += renderTabItem(tab, isGrouped ? tabGroups[tabGroupId]?.color : null);
+
+        lastGroupId = tabGroupId;
     });
 
     listEl.innerHTML = html;
     attachTabClickListeners();
+    initializeSortable();
 }
 
 // Render tabs in flat list
@@ -541,8 +526,7 @@ function attachTabClickListeners() {
             await focusTab(tabId, windowId);
         });
 
-        // Add drag and drop
-        attachDragHandlers(item);
+        // Sortable.js will handle drag and drop now
     });
 
     // Attach close button handlers
@@ -685,72 +669,224 @@ async function closeSelectedTabs() {
     }
 }
 
-// Attach drag-and-drop handlers to tab items
-function attachDragHandlers(item) {
-    item.setAttribute('draggable', 'true');
 
-    item.addEventListener('dragstart', (e) => {
-        e.stopPropagation();
-        item.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', item.dataset.tabId);
-    });
+// Initialize Sortable.js for drag-and-drop
+let sortableInstance = null;
 
-    item.addEventListener('dragend', (e) => {
-        e.stopPropagation();
-        item.classList.remove('dragging');
-        document.querySelectorAll('.tab-item').forEach(i => i.classList.remove('drag-over'));
-    });
+function initializeSortable() {
+    const tabsList = document.getElementById('tabsList');
+    if (!tabsList) return;
 
-    item.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        e.dataTransfer.dropEffect = 'move';
+    // Destroy previous instance if exists
+    if (sortableInstance) {
+        sortableInstance.destroy();
+    }
 
-        const draggingItem = document.querySelector('.dragging');
-        if (draggingItem && draggingItem !== item) {
-            item.classList.add('drag-over');
+    // Initialize Sortable on the main tabs list
+    sortableInstance = new Sortable(tabsList, {
+        animation: 200,
+        easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        dragClass: 'sortable-drag',
+        handle: '.tab-item',  // Only tab items are draggable
+        draggable: '.tab-row', // The row is what moves
+        filter: '.group-header-row', // Exclude group headers from dragging
+
+        // Smooth animations
+        forceFallback: false,
+
+        // Called when dragging starts
+        onStart: function (evt) {
+            const tabsList = document.getElementById('tabsList');
+            if (tabsList) tabsList.classList.add('dragging-active');
+        },
+
+        // Called when dragging ends (drop or cancel)
+        onEnd: async function (evt) {
+            const tabsList = document.getElementById('tabsList');
+            if (tabsList) tabsList.classList.remove('dragging-active');
+
+            // If position didn't change, do nothing
+            if (evt.oldIndex === evt.newIndex) return;
+
+            // Get the dragged tab ID from data attribute
+            const draggedRow = evt.item;
+            const draggedItem = draggedRow.querySelector('.tab-item');
+            if (!draggedItem) return;
+
+            const draggedTabId = parseInt(draggedItem.dataset.tabId);
+
+            // Get all tab rows in their new order
+            const allRows = Array.from(tabsList.querySelectorAll('.tab-row'));
+            const newIndex = allRows.indexOf(draggedRow);
+
+            // Determine if tab should be added to a group
+            // Only add to group if dropped IMMEDIATELY after a group header
+            let targetGroupId = null;
+            let shouldAddToGroup = false;
+            let shouldUngroup = false;
+
+            // Check the row immediately before the dropped position
+            if (newIndex > 0) {
+                const previousRow = allRows[newIndex - 1];
+                if (previousRow.classList.contains('group-header-row')) {
+                    // Dropped right after a group header - add to that group
+                    targetGroupId = parseInt(previousRow.dataset.groupId);
+                    shouldAddToGroup = true;
+                } else {
+                    // Dropped after a regular tab - check if we should ungroup
+                    const previousItem = previousRow.querySelector('.tab-item');
+                    if (previousItem) {
+                        const previousGroupId = parseInt(previousItem.dataset.groupId || -1);
+                        // If previous tab is ungrouped, ungroup this tab too
+                        if (!previousGroupId || previousGroupId === -1 || previousGroupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
+                            shouldUngroup = true;
+                        } else {
+                            // Previous tab is grouped
+                            // Check if the dragged tab is ALREADY in this same group
+                            const draggedGroupId = parseInt(draggedItem.dataset.groupId || -1);
+
+                            if (draggedGroupId === previousGroupId) {
+                                // Dragged tab is already in this group - keep it in the group (reordering within group)
+                                targetGroupId = previousGroupId;
+                                shouldAddToGroup = true;
+                            } else {
+                                // Dragged tab is from a different group - check if we're at the boundary
+                                // Look at the next row to see if it's also in the same group
+                                const nextRow = allRows[newIndex + 1];
+                                if (nextRow && !nextRow.classList.contains('group-header-row')) {
+                                    const nextItem = nextRow.querySelector('.tab-item');
+                                    if (nextItem) {
+                                        const nextGroupId = parseInt(nextItem.dataset.groupId || -1);
+                                        if (nextGroupId === previousGroupId) {
+                                            // Next tab is also in the same group - we're in the middle
+                                            targetGroupId = previousGroupId;
+                                            shouldAddToGroup = true;
+                                        } else {
+                                            // Next tab is NOT in the same group - we're after the group
+                                            shouldUngroup = true;
+                                        }
+                                    } else {
+                                        shouldUngroup = true;
+                                    }
+                                } else {
+                                    // Next row is a group header or doesn't exist - we're after the group
+                                    shouldUngroup = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Dropped at the very top - ungroup
+                shouldUngroup = true;
+            }
+
+            // Get the actual Chrome tab indices
+            const allTabItems = allRows
+                .filter(row => !row.classList.contains('group-header-row'))
+                .map(row => {
+                    const item = row.querySelector('.tab-item');
+                    return item ? {
+                        id: parseInt(item.dataset.tabId),
+                        windowId: parseInt(item.dataset.windowId),
+                        groupId: parseInt(item.dataset.groupId || -1)
+                    } : null;
+                }).filter(t => t !== null);
+
+            const draggedTab = allTabs.find(t => t.id === draggedTabId);
+            if (!draggedTab) {
+                console.error('Could not find dragged tab');
+                await loadAllTabs();
+                return;
+            }
+
+            // Calculate the correct Chrome index (excluding group headers)
+            const tabsOnly = allRows.filter(row => !row.classList.contains('group-header-row'));
+            const positionInTabsOnly = tabsOnly.indexOf(draggedRow);
+            const sameWindowTabs = allTabItems.filter(t => t.windowId === draggedTab.windowId);
+            const positionInWindow = sameWindowTabs.findIndex((t, i) => i === positionInTabsOnly);
+
+            if (positionInWindow === -1) {
+                console.error('Could not find tab position');
+                await loadAllTabs();
+                return;
+            }
+
+            try {
+                // Move the tab in Chrome
+                await chrome.tabs.move(draggedTabId, { index: positionInWindow });
+
+                // Add to group if needed
+                if (shouldAddToGroup && targetGroupId) {
+                    await chrome.tabs.group({
+                        tabIds: [draggedTabId],
+                        groupId: targetGroupId
+                    });
+                    console.log('Added tab', draggedTabId, 'to group', targetGroupId);
+                } else if (shouldUngroup || (!shouldAddToGroup && draggedTab.groupId && draggedTab.groupId !== -1)) {
+                    // If should ungroup OR moving to an ungrouped area, ungroup it
+                    await chrome.tabs.ungroup([draggedTabId]);
+                    console.log('Ungrouped tab', draggedTabId);
+                }
+
+                console.log('Moved tab', draggedTabId, 'to index', positionInWindow);
+
+                // Reload to reflect actual state
+                await loadAllTabs();
+            } catch (error) {
+                console.error('Error moving tab:', error);
+                await loadAllTabs(); // Reload to fix UI
+            }
         }
-    });
-
-    item.addEventListener('dragleave', (e) => {
-        e.stopPropagation();
-        item.classList.remove('drag-over');
-    });
-
-    item.addEventListener('drop', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        item.classList.remove('drag-over');
-
-        const draggedTabId = parseInt(e.dataTransfer.getData('text/plain'));
-        const targetTabId = parseInt(item.dataset.tabId);
-        const targetWindowId = parseInt(item.dataset.windowId);
-
-        if (draggedTabId === targetTabId) return;
-
-        await moveTab(draggedTabId, targetTabId, targetWindowId);
     });
 }
 
-// Move tab to new position or window
-async function moveTab(draggedTabId, targetTabId, targetWindowId) {
+// Modified moveTab function to accept dropAfter parameter
+async function moveTab(draggedTabId, targetTabId, targetWindowId, dropAfter = false) {
     try {
         const draggedTab = allTabs.find(t => t.id === draggedTabId);
         const targetTab = allTabs.find(t => t.id === targetTabId);
 
-        if (!draggedTab || !targetTab) return;
+        if (!draggedTab || !targetTab) {
+            console.error('Could not find dragged or target tab', { draggedTabId, targetTabId });
+            return;
+        }
 
         const draggedWindowId = draggedTab.windowId;
         const sameWindow = draggedWindowId === targetWindowId;
 
+        console.log('Moving tab:', {
+            draggedTabId,
+            targetTabId,
+            draggedIndex: draggedTab.index,
+            targetIndex: targetTab.index,
+            dropAfter,
+            sameWindow
+        });
+
         if (sameWindow) {
             // Reorder within same window
-            const targetIndex = targetTab.index;
-            await chrome.tabs.move(draggedTabId, { index: targetIndex });
+            let newIndex = targetTab.index;
+
+            // Calculate the correct index based on current positions
+            if (draggedTab.index < targetTab.index) {
+                // Moving down: if dropAfter, use target index, otherwise target index - 1
+                newIndex = dropAfter ? targetTab.index : targetTab.index - 1;
+            } else {
+                // Moving up: if dropAfter, use target index + 1, otherwise target index
+                newIndex = dropAfter ? targetTab.index + 1 : targetTab.index;
+            }
+
+            console.log('Calculated new index:', newIndex);
+            await chrome.tabs.move(draggedTabId, { index: newIndex });
         } else {
             // Move to different window
-            const targetIndex = targetTab.index;
+            let targetIndex = targetTab.index;
+            if (dropAfter) targetIndex++;
+
+            console.log('Moving to different window, index:', targetIndex);
             await chrome.tabs.move(draggedTabId, {
                 windowId: targetWindowId,
                 index: targetIndex
@@ -760,7 +896,7 @@ async function moveTab(draggedTabId, targetTabId, targetWindowId) {
             await cleanupEmptyWindow(draggedWindowId);
         }
 
-        // Reload tabs list
+        // Reload tabs list with smooth transition
         await loadAllTabs();
     } catch (error) {
         console.error('Error moving tab:', error);
