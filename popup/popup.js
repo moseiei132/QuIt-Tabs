@@ -731,7 +731,7 @@ function initializeSortable() {
 
             // HANDLE GROUP MOVE
             if (draggedRow.classList.contains('group-header-row')) {
-                const groupId = parseInt(draggedRow.dataset.groupId);
+                const draggedGroupId = parseInt(draggedRow.dataset.groupId);
 
                 // Calculate new index
                 // We need the index of the tab immediately following the dropped header
@@ -739,6 +739,72 @@ function initializeSortable() {
                 const allRows = Array.from(tabsList.querySelectorAll('.tab-row'));
                 const newIndex = allRows.indexOf(draggedRow);
 
+                // Check if dropped onto another group (either header or tabs)
+                let targetGroupId = null;
+                let shouldMerge = false;
+
+                // Check the row immediately before the dropped position
+                if (newIndex > 0) {
+                    const previousRow = allRows[newIndex - 1];
+                    if (previousRow.classList.contains('group-header-row')) {
+                        // Dropped right after another group's header - merge into that group
+                        targetGroupId = parseInt(previousRow.dataset.groupId);
+                        shouldMerge = true;
+                    } else {
+                        // Check if previous row is a tab in a group
+                        const previousItem = previousRow.querySelector('.tab-item');
+                        if (previousItem) {
+                            const previousGroupId = parseInt(previousItem.dataset.groupId || -1);
+                            // If previous tab is in a group (and not the same group being dragged)
+                            if (previousGroupId && previousGroupId !== -1 &&
+                                previousGroupId !== chrome.tabGroups.TAB_GROUP_ID_NONE &&
+                                previousGroupId !== draggedGroupId) {
+                                
+                                // Check if next row is also in the same group (to ensure we're inside, not at the end)
+                                const nextRow = allRows[newIndex + 1];
+                                if (nextRow && !nextRow.classList.contains('group-header-row')) {
+                                    const nextItem = nextRow.querySelector('.tab-item');
+                                    if (nextItem) {
+                                        const nextGroupId = parseInt(nextItem.dataset.groupId || -1);
+                                        // Only merge if next tab is also in the same group (we're inside the group)
+                                        if (nextGroupId === previousGroupId) {
+                                            targetGroupId = previousGroupId;
+                                            shouldMerge = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // If we should merge groups
+                if (shouldMerge && targetGroupId) {
+                    try {
+                        console.log('Merging group', draggedGroupId, 'into group', targetGroupId);
+
+                        // Get all tabs from the dragged group
+                        const draggedGroupTabs = allTabs.filter(t => t.groupId === draggedGroupId);
+                        const draggedTabIds = draggedGroupTabs.map(t => t.id);
+
+                        // Move all tabs from dragged group to target group
+                        if (draggedTabIds.length > 0) {
+                            await chrome.tabs.group({
+                                tabIds: draggedTabIds,
+                                groupId: targetGroupId
+                            });
+                            console.log('Successfully merged', draggedTabIds.length, 'tabs from group', draggedGroupId, 'into group', targetGroupId);
+                        }
+
+                        await loadAllTabs();
+                    } catch (error) {
+                        console.error('Error merging groups:', error);
+                        await loadAllTabs();
+                    }
+                    return;
+                }
+
+                // Otherwise, handle normal group reordering
                 let targetIndex = -1;
 
                 // Find next visible row (not hidden by drag, and not the dragged row itself)
@@ -756,7 +822,7 @@ function initializeSortable() {
                         break;
                     }
                     const item = row.querySelector('.tab-item');
-                    if (item && parseInt(item.dataset.groupId) !== groupId) {
+                    if (item && parseInt(item.dataset.groupId) !== draggedGroupId) {
                         nextValidRow = row;
                         break;
                     }
@@ -779,7 +845,7 @@ function initializeSortable() {
                     // If the group was originally BEFORE the target position, removing it shifts the target index down.
                     // We need to subtract the group size from the target index.
                     if (targetIndex !== -1) {
-                        const groupTabs = allTabs.filter(t => t.groupId === groupId).sort((a, b) => a.index - b.index);
+                        const groupTabs = allTabs.filter(t => t.groupId === draggedGroupId).sort((a, b) => a.index - b.index);
                         if (groupTabs.length > 0) {
                             const groupStartIndex = groupTabs[0].index;
                             const groupSize = groupTabs.length;
@@ -796,8 +862,8 @@ function initializeSortable() {
                 }
 
                 try {
-                    console.log('Moving group', groupId, 'to index', targetIndex);
-                    await chrome.tabGroups.move(groupId, { index: targetIndex });
+                    console.log('Moving group', draggedGroupId, 'to index', targetIndex);
+                    await chrome.tabGroups.move(draggedGroupId, { index: targetIndex });
                     await loadAllTabs();
                 } catch (error) {
                     console.error('Error moving group:', error);
