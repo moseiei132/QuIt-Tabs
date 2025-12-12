@@ -759,7 +759,7 @@ function initializeSortable() {
                             if (previousGroupId && previousGroupId !== -1 &&
                                 previousGroupId !== chrome.tabGroups.TAB_GROUP_ID_NONE &&
                                 previousGroupId !== draggedGroupId) {
-                                
+
                                 // Check if next row is also in the same group (to ensure we're inside, not at the end)
                                 const nextRow = allRows[newIndex + 1];
                                 if (nextRow && !nextRow.classList.contains('group-header-row')) {
@@ -805,64 +805,77 @@ function initializeSortable() {
                 }
 
                 // Otherwise, handle normal group reordering
-                let targetIndex = -1;
+                // Use the same window-aware position calculation as single tabs
 
-                // Find next visible row (not hidden by drag, and not the dragged row itself)
-                // Note: hidden class is already removed above, so we rely on current DOM state.
-                // But wait, if we moved the header down, the tabs of that group are now spatially "above" it in DOM if we didn't move them.
-                // This creates a broken state until we reload.
-                // So we must be careful to look at rows that are NOT part of the moved group.
+                // Get all tabs from the dragged group
+                const draggedGroupTabs = allTabs.filter(t => t.groupId === draggedGroupId);
+                const draggedGroupTabIds = new Set(draggedGroupTabs.map(t => t.id));
 
-                // Simple approach: find the first row after newIndex that is NOT part of the moved group.
-                let nextValidRow = null;
-                for (let i = newIndex + 1; i < allRows.length; i++) {
-                    const row = allRows[i];
-                    if (row.classList.contains('group-header-row')) {
-                        nextValidRow = row;
-                        break;
-                    }
-                    const item = row.querySelector('.tab-item');
-                    if (item && parseInt(item.dataset.groupId) !== draggedGroupId) {
-                        nextValidRow = row;
-                        break;
-                    }
-                }
+                // Determine target window for the group
+                let targetWindowId = draggedGroupTabs[0]?.windowId; // Groups always stay in same window
 
-                if (nextValidRow) {
-                    if (nextValidRow.classList.contains('group-header-row')) {
-                        // Find first tab of that group
-                        const nextGroupId = parseInt(nextValidRow.dataset.groupId);
-                        const nextGroupFirstTab = allTabs.find(t => t.groupId === nextGroupId); // Use allTabs (pre-move state)
-                        if (nextGroupFirstTab) targetIndex = nextGroupFirstTab.index;
-                    } else {
-                        const nextItem = nextValidRow.querySelector('.tab-item');
-                        const nextTabId = parseInt(nextItem.dataset.tabId);
-                        const nextTab = allTabs.find(t => t.id === nextTabId);
-                        if (nextTab) targetIndex = nextTab.index;
-                    }
-
-                    // Adjustment for moving from Low Index to High Index
-                    // If the group was originally BEFORE the target position, removing it shifts the target index down.
-                    // We need to subtract the group size from the target index.
-                    if (targetIndex !== -1) {
-                        const groupTabs = allTabs.filter(t => t.groupId === draggedGroupId).sort((a, b) => a.index - b.index);
-                        if (groupTabs.length > 0) {
-                            const groupStartIndex = groupTabs[0].index;
-                            const groupSize = groupTabs.length;
-
-                            if (groupStartIndex < targetIndex) {
-                                targetIndex = Math.max(0, targetIndex - groupSize);
+                // In window mode, verify which window the group was dropped into
+                if (groupByWindow) {
+                    const windowGroupContainer = draggedRow.closest('.window-group');
+                    if (windowGroupContainer) {
+                        const windowHeader = windowGroupContainer.querySelector('.window-group-header');
+                        if (windowHeader) {
+                            const headerText = windowHeader.textContent;
+                            const match = headerText.match(/Window (\d+)/);
+                            if (match) {
+                                targetWindowId = parseInt(match[1]);
                             }
                         }
                     }
+                }
 
-                } else {
-                    // No next valid row -> move to end
-                    targetIndex = -1;
+                // Build list of all tab items with their window and group info, excluding tabs in the dragged group
+                const allTabItemsExcludingGroup = allRows
+                    .filter(row => !row.classList.contains('group-header-row'))
+                    .map(row => {
+                        const item = row.querySelector('.tab-item');
+                        if (!item) return null;
+                        const tabId = parseInt(item.dataset.tabId);
+                        // Skip tabs that are part of the dragged group
+                        if (draggedGroupTabIds.has(tabId)) return null;
+                        return {
+                            id: tabId,
+                            windowId: parseInt(item.dataset.windowId),
+                            groupId: parseInt(item.dataset.groupId || -1)
+                        };
+                    })
+                    .filter(t => t !== null);
+
+                // Count tabs in the target window that appear before the dragged group header in DOM
+                let targetIndex = 0;
+                for (let i = 0; i < allRows.length; i++) {
+                    const row = allRows[i];
+
+                    // Stop when we reach the dragged group header
+                    if (row === draggedRow) {
+                        break;
+                    }
+
+                    // Skip group headers
+                    if (row.classList.contains('group-header-row')) {
+                        continue;
+                    }
+
+                    // Count tabs in the target window (excluding tabs from the dragged group)
+                    const item = row.querySelector('.tab-item');
+                    if (item) {
+                        const tabId = parseInt(item.dataset.tabId);
+                        const tabWindowId = parseInt(item.dataset.windowId);
+
+                        // Only count if in target window and not part of dragged group
+                        if (tabWindowId === targetWindowId && !draggedGroupTabIds.has(tabId)) {
+                            targetIndex++;
+                        }
+                    }
                 }
 
                 try {
-                    console.log('Moving group', draggedGroupId, 'to index', targetIndex);
+                    console.log('Moving group', draggedGroupId, 'to index', targetIndex, 'in window', targetWindowId);
                     await chrome.tabGroups.move(draggedGroupId, { index: targetIndex });
                     await loadAllTabs();
                 } catch (error) {
@@ -966,18 +979,81 @@ function initializeSortable() {
             // Calculate the correct Chrome index (excluding group headers)
             const tabsOnly = allRows.filter(row => !row.classList.contains('group-header-row'));
             const positionInTabsOnly = tabsOnly.indexOf(draggedRow);
-            const sameWindowTabs = allTabItems.filter(t => t.windowId === draggedTab.windowId);
-            const positionInWindow = sameWindowTabs.findIndex((t, i) => i === positionInTabsOnly);
 
-            if (positionInWindow === -1) {
-                console.error('Could not find tab position');
-                await loadAllTabs();
-                return;
+            // Determine target window by checking which window-group the tab is now in
+            let targetWindowId = draggedTab.windowId; // Default to same window
+            let isCrossWindowMove = false;
+
+            // In window mode, check if the dragged row is inside a window-group container
+            if (groupByWindow) {
+                const windowGroupContainer = draggedRow.closest('.window-group');
+                if (windowGroupContainer) {
+                    // Find the window-group-header to extract windowId
+                    const windowHeader = windowGroupContainer.querySelector('.window-group-header');
+                    if (windowHeader) {
+                        // Extract window ID from header text (format: "🪟 Window {id} ...")
+                        const headerText = windowHeader.textContent;
+                        const match = headerText.match(/Window (\d+)/);
+                        if (match) {
+                            const detectedWindowId = parseInt(match[1]);
+                            if (detectedWindowId !== draggedTab.windowId) {
+                                targetWindowId = detectedWindowId;
+                                isCrossWindowMove = true;
+                            } else {
+                                targetWindowId = detectedWindowId;
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Not in window mode - check tabs before and after the dropped position
+                if (positionInTabsOnly > 0) {
+                    const previousTabData = allTabItems[positionInTabsOnly - 1];
+                    if (previousTabData && previousTabData.windowId !== draggedTab.windowId) {
+                        targetWindowId = previousTabData.windowId;
+                        isCrossWindowMove = true;
+                    }
+                }
+
+                if (!isCrossWindowMove && positionInTabsOnly < allTabItems.length - 1) {
+                    const nextTabData = allTabItems[positionInTabsOnly];
+                    if (nextTabData && nextTabData.id !== draggedTabId && nextTabData.windowId !== draggedTab.windowId) {
+                        targetWindowId = nextTabData.windowId;
+                        isCrossWindowMove = true;
+                    }
+                }
             }
+
+            // Calculate position within the TARGET window (not source window)
+            const targetWindowTabs = allTabItems.filter(t => t.windowId === targetWindowId);
+
+            // Find position within target window's tabs by counting tabs in target window that appear before the dragged tab
+            let positionInTargetWindow = 0;
+            for (let i = 0; i < allTabItems.length; i++) {
+                if (allTabItems[i].id === draggedTabId) {
+                    // Found the dragged tab, stop counting
+                    break;
+                }
+                // Only count tabs that are in the target window
+                if (allTabItems[i].windowId === targetWindowId) {
+                    positionInTargetWindow++;
+                }
+            }
+
+            // For same-window moves, Chrome removes the tab first before inserting
+            // So if we're moving down within the same window, the position is already correct
+            // If moving up, the position is also correct because we stopped counting before finding the dragged tab
+            // No adjustment needed!
 
             try {
                 // Move the tab in Chrome
-                await chrome.tabs.move(draggedTabId, { index: positionInWindow });
+                const moveOptions = isCrossWindowMove
+                    ? { windowId: targetWindowId, index: positionInTargetWindow }
+                    : { index: positionInTargetWindow };
+
+                await chrome.tabs.move(draggedTabId, moveOptions);
+
+                console.log('Moved tab', draggedTabId, 'to', isCrossWindowMove ? `window ${targetWindowId},` : '', 'index', positionInTargetWindow);
 
                 // Add to group if needed
                 if (shouldAddToGroup && targetGroupId) {
@@ -992,7 +1068,10 @@ function initializeSortable() {
                     console.log('Ungrouped tab', draggedTabId);
                 }
 
-                console.log('Moved tab', draggedTabId, 'to index', positionInWindow);
+                // Clean up empty source window if cross-window move
+                if (isCrossWindowMove) {
+                    await cleanupEmptyWindow(draggedTab.windowId);
+                }
 
                 // Reload to reflect actual state
                 await loadAllTabs();
