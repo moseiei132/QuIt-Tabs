@@ -5,7 +5,7 @@ let allTabs = [];
 let tabGroups = {}; // Store tab group info: { groupId: { title, color } }
 let tabStates = {};
 let settings = {};
-let groupByWindow = false;
+let groupByWindow = true; // Always show window groups
 let searchQuery = '';
 let editMode = false; // Edit mode for showing checkboxes
 
@@ -297,10 +297,12 @@ function renderGroupedTabs(tabs) {
         // Sort tabs by index within this window
         windowTabs.sort((a, b) => a.index - b.index);
 
-        html += `<div class="window-group">
+        // Add window header as a non-draggable row
+        html += `<div class="tab-row window-header-row" data-window-id="${windowId}">
           <div class="window-group-header">
             🪟 Window ${windowId} (${windowTabs.length} tabs)
-          </div>`;
+          </div>
+        </div>`;
 
         // Group consecutive tabs that share the same groupId
         const sections = [];
@@ -329,20 +331,20 @@ function renderGroupedTabs(tabs) {
                 const groupTitle = groupInfo?.title || 'Unknown Group';
                 const groupColor = groupInfo?.color || 'grey';
 
-                html += `
-                <div class="tab-group-inline">
+                // Render group header as a special row
+                html += `<div class="tab-row group-header-row" data-group-id="${section.groupId}" data-color="${groupColor}">
                   <div class="tab-group-header-inline" data-color="${groupColor}">
                     <span class="group-indicator-small" style="background-color: var(--group-${groupColor});"></span>
                     <span class="group-title-small">${escapeHtml(groupTitle)}</span>
                   </div>
-                  ${section.tabs.map(tab => renderTabItem(tab, groupColor)).join('')}
                 </div>`;
+
+                // Render tabs in the group
+                html += section.tabs.map(tab => renderTabItem(tab, groupColor)).join('');
             } else {
                 html += section.tabs.map(tab => renderTabItem(tab)).join('');
             }
         });
-
-        html += `</div>`;
     });
 
     listEl.innerHTML = html;
@@ -689,8 +691,9 @@ function initializeSortable() {
         ghostClass: 'sortable-ghost',
         chosenClass: 'sortable-chosen',
         dragClass: 'sortable-drag',
-        handle: '.tab-item, .group-header-row',  // Allow dragging tabs AND group headers
+        handle: '.tab-item, .group-header-row',  // Allow dragging tabs AND Chrome tab group headers (NOT window headers)
         draggable: '.tab-row', // The row is what moves
+        filter: '.window-header-row', // Exclude window headers from dragging
         // Smooth animations
         forceFallback: false,
 
@@ -959,7 +962,7 @@ function initializeSortable() {
 
             // Get the actual Chrome tab indices
             const allTabItems = allRows
-                .filter(row => !row.classList.contains('group-header-row'))
+                .filter(row => !row.classList.contains('group-header-row') && !row.classList.contains('window-header-row'))
                 .map(row => {
                     const item = row.querySelector('.tab-item');
                     return item ? {
@@ -976,53 +979,37 @@ function initializeSortable() {
                 return;
             }
 
-            // Calculate the correct Chrome index (excluding group headers)
-            const tabsOnly = allRows.filter(row => !row.classList.contains('group-header-row'));
+            // Calculate the correct Chrome index (excluding group headers and window headers)
+            const tabsOnly = allRows.filter(row => !row.classList.contains('group-header-row') && !row.classList.contains('window-header-row'));
             const positionInTabsOnly = tabsOnly.indexOf(draggedRow);
 
-            // Determine target window by checking which window-group the tab is now in
+            // Determine target window by checking which window section the tab is in
             let targetWindowId = draggedTab.windowId; // Default to same window
             let isCrossWindowMove = false;
 
-            // In window mode, check if the dragged row is inside a window-group container
+            // In window mode, find the nearest window header above the dragged row
             if (groupByWindow) {
-                const windowGroupContainer = draggedRow.closest('.window-group');
-                if (windowGroupContainer) {
-                    // Find the window-group-header to extract windowId
-                    const windowHeader = windowGroupContainer.querySelector('.window-group-header');
-                    if (windowHeader) {
-                        // Extract window ID from header text (format: "🪟 Window {id} ...")
-                        const headerText = windowHeader.textContent;
-                        const match = headerText.match(/Window (\d+)/);
-                        if (match) {
-                            const detectedWindowId = parseInt(match[1]);
-                            if (detectedWindowId !== draggedTab.windowId) {
-                                targetWindowId = detectedWindowId;
-                                isCrossWindowMove = true;
-                            } else {
-                                targetWindowId = detectedWindowId;
-                            }
-                        }
-                    }
-                }
-            } else {
-                // Not in window mode - check tabs before and after the dropped position
-                if (positionInTabsOnly > 0) {
-                    const previousTabData = allTabItems[positionInTabsOnly - 1];
-                    if (previousTabData && previousTabData.windowId !== draggedTab.windowId) {
-                        targetWindowId = previousTabData.windowId;
-                        isCrossWindowMove = true;
-                    }
-                }
+                const allRowsArray = Array.from(allRows);
+                const draggedRowIndex = allRowsArray.indexOf(draggedRow);
 
-                if (!isCrossWindowMove && positionInTabsOnly < allTabItems.length - 1) {
-                    const nextTabData = allTabItems[positionInTabsOnly];
-                    if (nextTabData && nextTabData.id !== draggedTabId && nextTabData.windowId !== draggedTab.windowId) {
-                        targetWindowId = nextTabData.windowId;
-                        isCrossWindowMove = true;
+                // Look backwards from the dragged row to find the nearest window header
+                for (let i = draggedRowIndex - 1; i >= 0; i--) {
+                    const row = allRowsArray[i];
+                    if (row.classList.contains('window-header-row')) {
+                        const detectedWindowId = parseInt(row.dataset.windowId);
+                        if (detectedWindowId !== draggedTab.windowId) {
+                            targetWindowId = detectedWindowId;
+                            isCrossWindowMove = true;
+                        } else {
+                            targetWindowId = detectedWindowId;
+                        }
+                        break;
                     }
                 }
             }
+            // NOTE: When NOT in window mode (flat view), tabs should NEVER move across windows
+            // They should always stay in their original window during reordering
+            // So we don't check neighboring tabs - just keep targetWindowId = draggedTab.windowId
 
             // Calculate position within the TARGET window (not source window)
             const targetWindowTabs = allTabItems.filter(t => t.windowId === targetWindowId);
@@ -1047,7 +1034,8 @@ function initializeSortable() {
 
             try {
                 // Move the tab in Chrome
-                const moveOptions = isCrossWindowMove
+                // Always include windowId when in window mode to prevent cross-window moves
+                const moveOptions = (isCrossWindowMove || groupByWindow)
                     ? { windowId: targetWindowId, index: positionInTargetWindow }
                     : { index: positionInTargetWindow };
 
@@ -1387,13 +1375,6 @@ function setupEventListeners() {
         if (!editMode) {
             clearSelection();
         }
-    });
-
-    // Group by window toggle
-    document.getElementById('groupByWindowBtn').addEventListener('click', () => {
-        groupByWindow = !groupByWindow;
-        document.getElementById('groupByWindowBtn').classList.toggle('active', groupByWindow);
-        renderTabsList();
     });
 
     // Search functionality
