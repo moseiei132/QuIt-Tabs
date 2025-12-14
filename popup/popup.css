@@ -433,6 +433,21 @@ svg use {
   background: var(--macos-divider);
 }
 
+.btn-protected {
+  background: var(--macos-accent);
+  color: white;
+  border: 0.5px solid var(--macos-accent);
+}
+
+.btn-protected:hover {
+  background: var(--macos-accent-hover);
+  border-color: var(--macos-accent-hover);
+}
+
+.btn-protected:active {
+  transform: scale(0.98);
+}
+
 .btn-danger {
   background: var(--macos-red);
   color: white;
