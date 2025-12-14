@@ -284,6 +284,28 @@
           </label>
         </div>
 
+        <!-- Per-Site Timeouts Section -->
+        <div class="setting-section">
+          <h3 class="setting-section-title">Per-Site Timeouts</h3>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-desc">Set custom timeout for specific sites</span>
+            </div>
+          </div>
+
+          <!-- List of per-site timeout rules -->
+          <div id="perSiteTimeoutsList" class="per-site-list"></div>
+
+          <!-- Add new per-site timeout -->
+          <button id="addPerSiteTimeoutBtn" class="btn btn-secondary" style="width: 100%; margin-top: 8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19" stroke-linecap="round" />
+              <line x1="5" y1="12" x2="19" y2="12" stroke-linecap="round" />
+            </svg>
+            Add Site Rule
+          </button>
+        </div>
+
         <!-- Extension Info -->
         <div class="extension-info">
           <div class="extension-version">
@@ -320,6 +342,27 @@
     <!-- Context Menu -->
     <div id="contextMenu" class="context-menu" style="display: none;">
       <div class="context-menu-items"></div>
+    </div>
+
+    <!-- Per-Site Timeout Dialog -->
+    <div id="perSiteTimeoutDialog" class="modal" style="display: none;">
+      <div class="modal-content">
+        <h3>Add Per-Site Timeout</h3>
+        <div class="modal-body">
+          <div class="input-group">
+            <label for="sitePattern">Domain (e.g., example.com or *.example.com)</label>
+            <input type="text" id="sitePattern" placeholder="example.com" />
+          </div>
+          <div class="input-group">
+            <label for="siteTimeout">Timeout (minutes)</label>
+            <input type="number" id="siteTimeout" min="1" max="1440" value="30" />
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="cancelPerSiteTimeout" class="btn">Cancel</button>
+          <button id="savePerSiteTimeout" class="btn btn-primary">Save</button>
+        </div>
+      </div>
     </div>
 
   </div>

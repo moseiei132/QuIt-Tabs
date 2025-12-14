@@ -6,7 +6,8 @@ const DEFAULT_SETTINGS = {
   autoCloseSpecial: true, // Special tabs: extensions, new tab, chrome:// pages
   pauseOnMedia: true,
   focusedWindowOnly: true, // Only active tab in focused window is truly active
-  historyRetentionDays: 7 // Keep history for 7 days
+  historyRetentionDays: 7, // Keep history for 7 days
+  perSiteTimeouts: [] // Array of { pattern: string, timeout: number (seconds) }
 };
 
 /**
@@ -143,3 +144,122 @@ export async function clearHistory() {
     console.error('Error clearing history:', error);
   }
 }
+
+/**
+ * Get the timeout value for a specific URL
+ * Checks perSiteTimeouts and returns the first matching rule's timeout,
+ * or returns the global countdown if no match found
+ * @param {string} url - The URL to check
+ * @param {Object} settings - Settings object (optional, will fetch if not provided)
+ * @returns {Promise<number>} Timeout in seconds
+ */
+export async function getTimeoutForUrl(url, settings = null) {
+  try {
+    if (!settings) {
+      settings = await getSettings();
+    }
+
+    // Extract domain from URL
+    let domain;
+    try {
+      const urlObj = new URL(url);
+      domain = urlObj.hostname;
+    } catch {
+      return settings.globalCountdown;
+    }
+
+    // Check if URL matches any per-site timeout pattern
+    for (const rule of settings.perSiteTimeouts || []) {
+      if (matchesPattern(domain, rule.pattern)) {
+        return rule.timeout;
+      }
+    }
+
+    // No match, return global countdown
+    return settings.globalCountdown;
+  } catch (error) {
+    console.error('Error getting timeout for URL:', error);
+    return settings?.globalCountdown || DEFAULT_SETTINGS.globalCountdown;
+  }
+}
+
+/**
+ * Check if a domain matches a pattern
+ * Supports wildcards: *.example.com matches any subdomain of example.com
+ * @param {string} domain - The domain to check
+ * @param {string} pattern - The pattern to match against
+ * @returns {boolean} True if domain matches pattern
+ */
+function matchesPattern(domain, pattern) {
+  // Exact match
+  if (domain === pattern) return true;
+
+  // Wildcard pattern
+  if (pattern.startsWith('*.')) {
+    const baseDomain = pattern.substring(2);
+    // Matches if domain is exactly baseDomain or ends with .baseDomain
+    return domain === baseDomain || domain.endsWith('.' + baseDomain);
+  }
+
+  return false;
+}
+
+/**
+ * Add a per-site timeout rule
+ * @param {string} pattern - URL pattern (e.g., "example.com" or "*.example.com")
+ * @param {number} timeout - Timeout in seconds
+ * @returns {Promise<void>}
+ */
+export async function addPerSiteTimeout(pattern, timeout) {
+  try {
+    const settings = await getSettings();
+
+    // Remove any existing rule for this pattern
+    settings.perSiteTimeouts = (settings.perSiteTimeouts || []).filter(
+      rule => rule.pattern !== pattern
+    );
+
+    // Add new rule
+    settings.perSiteTimeouts.push({ pattern, timeout });
+
+    await saveSettings(settings);
+  } catch (error) {
+    console.error('Error adding per-site timeout:', error);
+    throw error;
+  }
+}
+
+/**
+ * Remove a per-site timeout rule
+ * @param {string} pattern - URL pattern to remove
+ * @returns {Promise<void>}
+ */
+export async function removePerSiteTimeout(pattern) {
+  try {
+    const settings = await getSettings();
+
+    settings.perSiteTimeouts = (settings.perSiteTimeouts || []).filter(
+      rule => rule.pattern !== pattern
+    );
+
+    await saveSettings(settings);
+  } catch (error) {
+    console.error('Error removing per-site timeout:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get all per-site timeout rules
+ * @returns {Promise<Array>} Array of { pattern, timeout } objects
+ */
+export async function getPerSiteTimeouts() {
+  try {
+    const settings = await getSettings();
+    return settings.perSiteTimeouts || [];
+  } catch (error) {
+    console.error('Error getting per-site timeouts:', error);
+    return [];
+  }
+}
+

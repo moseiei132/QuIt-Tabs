@@ -1,4 +1,4 @@
-import { getSettings, getTabStates, saveTabStates, addHistoryEntry } from './utils/storage.js';
+import { getSettings, getTabStates, saveTabStates, addHistoryEntry, getTimeoutForUrl } from './utils/storage.js';
 import { parseQuitParams, cleanQuitParams, hasQuitParams } from './utils/quit-integration.js';
 
 // Tab states structure:
@@ -87,8 +87,8 @@ async function updateTabState(tab, isActive = false) {
 
     const existingState = tabStates[tab.id];
 
-    // Use global countdown setting
-    let countdown = settings.globalCountdown;
+    // Get timeout for this specific URL (checks per-site rules)
+    let countdown = await getTimeoutForUrl(tab.url, settings);
 
     const now = Date.now();
 
@@ -502,6 +502,9 @@ async function handleMessage(message, sender, sendResponse) {
                     const unprotectTab = await chrome.tabs.get(message.tabId);
                     const isUnprotectTabActive = activeTabsByWindow[unprotectTab.windowId] === message.tabId;
 
+                    // Get the appropriate countdown for this tab's URL
+                    const newCountdown = await getTimeoutForUrl(unprotectTab.url, settings);
+
                     // Only start countdown if tab is not currently active
                     if (isUnprotectTabActive) {
                         // Tab is active - no countdown yet
@@ -510,8 +513,8 @@ async function handleMessage(message, sender, sendResponse) {
                         // Tab is inactive - restart countdown from beginning
                         tabStates[message.tabId].lastActiveTime = Date.now();
                     }
-                    tabStates[message.tabId].countdown = settings.globalCountdown;
-                    tabStates[message.tabId].initialCountdown = settings.globalCountdown;
+                    tabStates[message.tabId].countdown = newCountdown;
+                    tabStates[message.tabId].initialCountdown = newCountdown;
                     await saveTabStates(tabStates);
                     sendResponse({ success: true });
                 } else {

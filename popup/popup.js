@@ -1574,6 +1574,129 @@ function setupSettingsPanel() {
         await saveSettings(settings);
         await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
     });
+
+    // Per-Site Timeout: Add button
+    document.getElementById('addPerSiteTimeoutBtn').addEventListener('click', () => {
+        showPerSiteTimeoutDialog();
+    });
+
+    // Per-Site Timeout: Cancel button
+    document.getElementById('cancelPerSiteTimeout').addEventListener('click', () => {
+        hidePerSiteTimeoutDialog();
+    });
+
+    // Per-Site Timeout: Save button
+    document.getElementById('savePerSiteTimeout').addEventListener('click', async () => {
+        await savePerSiteTimeoutRule();
+    });
+
+    // Load per-site timeouts
+    renderPerSiteTimeouts();
+}
+
+// Render per-site timeout rules
+async function renderPerSiteTimeouts() {
+    const listEl = document.getElementById('perSiteTimeoutsList');
+    const rules = settings.perSiteTimeouts || [];
+
+    if (rules.length === 0) {
+        listEl.innerHTML = '<div class="empty-message">No site-specific timeouts set</div>';
+        return;
+    }
+
+    listEl.innerHTML = rules.map(rule => `
+        <div class="per-site-rule">
+            <div class="per-site-info">
+                <div class="per-site-pattern">${escapeHtml(rule.pattern)}</div>
+                <div class="per-site-timeout">${Math.floor(rule.timeout / 60)} minutes</div>
+            </div>
+            <button class="btn-icon" data-pattern="${escapeHtml(rule.pattern)}" title="Remove rule">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" />
+                </svg>
+            </button>
+        </div>
+    `).join('');
+
+    // Attach delete handlers
+    listEl.querySelectorAll('.btn-icon').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const pattern = btn.dataset.pattern;
+            await removePerSiteTimeoutRule(pattern);
+        });
+    });
+}
+
+// Show per-site timeout dialog
+function showPerSiteTimeoutDialog() {
+    const dialog = document.getElementById('perSiteTimeoutDialog');
+    const patternInput = document.getElementById('sitePattern');
+    const timeoutInput = document.getElementById('siteTimeout');
+
+    // Pre-fill with current tab's domain if available
+    if (currentTab && currentTab.url) {
+        try {
+            const url = new URL(currentTab.url);
+            patternInput.value = url.hostname;
+        } catch {
+            patternInput.value = '';
+        }
+    } else {
+        patternInput.value = '';
+    }
+
+    timeoutInput.value = 30; // Default 30 minutes
+    dialog.style.display = 'flex';
+    patternInput.focus();
+}
+
+// Hide per-site timeout dialog
+function hidePerSiteTimeoutDialog() {
+    const dialog = document.getElementById('perSiteTimeoutDialog');
+    dialog.style.display = 'none';
+}
+
+// Save per-site timeout rule
+async function savePerSiteTimeoutRule() {
+    const pattern = document.getElementById('sitePattern').value.trim();
+    const minutes = parseInt(document.getElementById('siteTimeout').value);
+
+    if (!pattern) {
+        alert('Please enter a domain pattern');
+        return;
+    }
+
+    if (!minutes || minutes < 1 || minutes > 1440) {
+        alert('Please enter a valid timeout between 1-1440 minutes');
+        return;
+    }
+
+    const timeout = minutes * 60; // Convert to seconds
+
+    // Add rule to settings
+    if (!settings.perSiteTimeouts) {
+        settings.perSiteTimeouts = [];
+    }
+
+    // Remove existing rule for this pattern
+    settings.perSiteTimeouts = settings.perSiteTimeouts.filter(r => r.pattern !== pattern);
+
+    // Add new rule
+    settings.perSiteTimeouts.push({ pattern, timeout });
+
+    await saveSettings(settings);
+    await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
+
+    hidePerSiteTimeoutDialog();
+    renderPerSiteTimeouts();
+}
+
+// Remove per-site timeout rule
+async function removePerSiteTimeoutRule(pattern) {
+    settings.perSiteTimeouts = settings.perSiteTimeouts.filter(r => r.pattern !== pattern);
+    await saveSettings(settings);
+    await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
+    renderPerSiteTimeouts();
 }
 
 // Refresh tab states from background
