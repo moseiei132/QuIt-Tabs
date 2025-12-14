@@ -1,4 +1,4 @@
-import { getSettings, getTabStates, saveTabStates } from './utils/storage.js';
+import { getSettings, getTabStates, saveTabStates, addHistoryEntry } from './utils/storage.js';
 import { parseQuitParams, cleanQuitParams, hasQuitParams } from './utils/quit-integration.js';
 
 // Tab states structure:
@@ -301,6 +301,33 @@ async function onTabCreated(tab) {
 
 // Handle tab removal
 async function onTabRemoved(tabId, removeInfo) {
+    // Record to history if tab state exists (manual browser close)
+    const tabState = tabStates[tabId];
+    if (tabState) {
+        try {
+            // Get tab details from Chrome (if still available during window close)
+            let tabTitle = 'Untitled';
+            let tabFavicon = '';
+
+            // Try to get fresh tab info if not window closing
+            if (!removeInfo.isWindowClosing) {
+                // Tab was already removed, use stored state
+                tabTitle = tabState.url ? new URL(tabState.url).hostname : 'Untitled';
+            }
+
+            await addHistoryEntry({
+                url: tabState.url,
+                title: tabTitle,
+                favicon: tabFavicon,
+                closeReason: 'manual_browser',
+                windowId: removeInfo.windowId,
+                groupId: null // Group info not available at this point
+            });
+        } catch (error) {
+            console.error('Error recording tab removal to history:', error);
+        }
+    }
+
     delete tabStates[tabId];
 
     // Clean up window tracking if window is being closed
@@ -389,6 +416,21 @@ async function onAlarm(alarm) {
             const tab = allTabs.find(t => t.id === tabId);
             if (!tab) continue;
 
+            // Record to history before closing (timeout auto-quit)
+            try {
+                const tabState = tabStates[tabId];
+                await addHistoryEntry({
+                    url: tab.url || tabState?.url || '',
+                    title: tab.title || 'Untitled',
+                    favicon: tab.favIconUrl || '',
+                    closeReason: 'timeout',
+                    windowId: tab.windowId,
+                    groupId: tab.groupId !== -1 ? tab.groupId : null
+                });
+            } catch (error) {
+                console.error('Error recording timeout close to history:', error);
+            }
+
             // Check if this is the last tab in its window
             if (tabsByWindow[tab.windowId] && tabsByWindow[tab.windowId].length === 1) {
                 // Close the entire window instead
@@ -474,6 +516,29 @@ async function handleMessage(message, sender, sendResponse) {
                     sendResponse({ success: true });
                 } else {
                     sendResponse({ success: false, error: 'Tab not found' });
+                }
+                break;
+
+            case 'closeTabWithHistory':
+                // Close tab and record to history (manual QuIt close)
+                if (message.tabId) {
+                    try {
+                        const tab = await chrome.tabs.get(message.tabId);
+                        await addHistoryEntry({
+                            url: tab.url,
+                            title: tab.title || 'Untitled',
+                            favicon: tab.favIconUrl || '',
+                            closeReason: message.isBatch ? 'batch_close' : 'manual_quit',
+                            windowId: tab.windowId,
+                            groupId: tab.groupId !== -1 ? tab.groupId : null
+                        });
+                        await chrome.tabs.remove(message.tabId);
+                        sendResponse({ success: true });
+                    } catch (error) {
+                        sendResponse({ success: false, error: error.message });
+                    }
+                } else {
+                    sendResponse({ success: false, error: 'No tabId provided' });
                 }
                 break;
 

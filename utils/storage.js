@@ -5,7 +5,8 @@ const DEFAULT_SETTINGS = {
   autoClosePinned: false,
   autoCloseSpecial: true, // Special tabs: extensions, new tab, chrome:// pages
   pauseOnMedia: true,
-  focusedWindowOnly: true // Only active tab in focused window is truly active
+  focusedWindowOnly: true, // Only active tab in focused window is truly active
+  historyRetentionDays: 7 // Keep history for 7 days
 };
 
 /**
@@ -60,5 +61,85 @@ export async function saveTabStates(tabStates) {
     await chrome.storage.local.set({ tabStates });
   } catch (error) {
     console.error('Error saving tab states:', error);
+  }
+}
+
+/**
+ * Get history from local storage
+ * @returns {Promise<Array>} Array of history entries
+ */
+export async function getHistory() {
+  try {
+    const result = await chrome.storage.local.get('history');
+    return result.history || [];
+  } catch (error) {
+    console.error('Error loading history:', error);
+    return [];
+  }
+}
+
+/**
+ * Save history to local storage
+ * @param {Array} history - Array of history entries
+ * @returns {Promise<void>}
+ */
+export async function saveHistory(history) {
+  try {
+    await chrome.storage.local.set({ history });
+  } catch (error) {
+    console.error('Error saving history:', error);
+  }
+}
+
+/**
+ * Add a history entry
+ * @param {Object} entry - History entry object
+ * @param {string} entry.url - Tab URL
+ * @param {string} entry.title - Tab title
+ * @param {string} entry.favicon - Tab favicon URL
+ * @param {string} entry.closeReason - Close reason: 'manual_browser', 'manual_quit', 'timeout', 'batch_close'
+ * @param {number} entry.windowId - Window ID
+ * @param {number} entry.groupId - Tab group ID
+ * @returns {Promise<void>}
+ */
+export async function addHistoryEntry(entry) {
+  try {
+    const settings = await getSettings();
+    const history = await getHistory();
+
+    // Create new entry with timestamp and unique ID
+    const newEntry = {
+      id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      url: entry.url,
+      title: entry.title || 'Untitled',
+      favicon: entry.favicon || '',
+      closeReason: entry.closeReason,
+      timestamp: Date.now(),
+      windowId: entry.windowId || null,
+      groupId: entry.groupId || null
+    };
+
+    // Add to beginning of array (most recent first)
+    history.unshift(newEntry);
+
+    // Clean up old entries (older than retention period)
+    const cutoffTime = Date.now() - (settings.historyRetentionDays * 24 * 60 * 60 * 1000);
+    const filteredHistory = history.filter(h => h.timestamp >= cutoffTime);
+
+    await saveHistory(filteredHistory);
+  } catch (error) {
+    console.error('Error adding history entry:', error);
+  }
+}
+
+/**
+ * Clear all history
+ * @returns {Promise<void>}
+ */
+export async function clearHistory() {
+  try {
+    await chrome.storage.local.set({ history: [] });
+  } catch (error) {
+    console.error('Error clearing history:', error);
   }
 }

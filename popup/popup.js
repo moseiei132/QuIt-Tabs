@@ -670,7 +670,12 @@ function clearSelection() {
 // Close a single tab
 async function closeTab(tabId) {
     try {
-        await chrome.tabs.remove(tabId);
+        // Use new message handler to close tab with history tracking
+        await chrome.runtime.sendMessage({
+            type: 'closeTabWithHistory',
+            tabId: tabId,
+            isBatch: false
+        });
         // Remove from allTabs array
         allTabs = allTabs.filter(t => t.id !== tabId);
         renderTabsList();
@@ -686,7 +691,14 @@ async function closeSelectedTabs() {
     const tabIds = Array.from(selectedTabIds);
 
     try {
-        await chrome.tabs.remove(tabIds);
+        // Close each tab with history tracking
+        for (const tabId of tabIds) {
+            await chrome.runtime.sendMessage({
+                type: 'closeTabWithHistory',
+                tabId: tabId,
+                isBatch: true
+            });
+        }
         // Remove from allTabs array
         allTabs = allTabs.filter(t => !tabIds.includes(t.id));
         clearSelection();
@@ -1361,7 +1373,14 @@ function setupEventListeners() {
         }
 
         if (tabsToClose.length > 0) {
-            await chrome.tabs.remove(tabsToClose);
+            // Close each tab with history tracking
+            for (const tabId of tabsToClose) {
+                await chrome.runtime.sendMessage({
+                    type: 'closeTabWithHistory',
+                    tabId: tabId,
+                    isBatch: true  // This will mark as 'batch_close' in history
+                });
+            }
             await loadAllTabs();
         }
 
@@ -1457,6 +1476,11 @@ function setupEventListeners() {
     // Merge duplicate tabs button
     document.getElementById('mergeDuplicatesBtn').addEventListener('click', async () => {
         await mergeDuplicateTabs();
+    });
+
+    // History button
+    document.getElementById('historyBtn').addEventListener('click', () => {
+        chrome.tabs.create({ url: chrome.runtime.getURL('history/history.html') });
     });
 
     // Settings panel handlers
