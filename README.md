@@ -4,6 +4,8 @@
 
 A Chrome extension that automatically closes inactive tabs after a configurable countdown, helping you maintain a clean and organized browser workspace.
 
+![QuIt-Tabs Extension](screenshots/1.png)
+
 ## ✨ Features
 
 ### Smart Tab Management
