@@ -8,6 +8,7 @@ let settings = {};
 let groupByWindow = true; // Always show window groups
 let searchQuery = '';
 let editMode = false; // Edit mode for showing checkboxes
+let quitConfirmMode = false; // Quit all confirmation mode
 
 // Initialize popup
 async function init() {
@@ -485,10 +486,23 @@ function renderTabItem(tab, groupColor = null) {
         ? `style="border-left: 3px solid var(--group-${groupColor});"`
         : '';
 
+    // Determine if this tab would be closed in quit confirm mode
+    let quitTargetClass = '';
+    if (quitConfirmMode && !isActive && settings.enabled) {
+        const isPinnedProtected = tab.pinned && !settings.autoClosePinned;
+        const isSpecialProtected = isSpecialTab(tab) && !settings.autoCloseSpecial;
+        const isMediaProtected = state?.hasMedia && settings.pauseOnMedia;
+        const isProtected = state?.protected || isPinnedProtected || isSpecialProtected || isMediaProtected;
+        const hasCountdown = state?.countdown !== null && state?.countdown !== undefined;
+        if (!isProtected && hasCountdown) {
+            quitTargetClass = 'quit-target';
+        }
+    }
+
     return `
     <div class="tab-row">
       <input type="checkbox" class="tab-checkbox-outer" data-tab-id="${tab.id}">
-      <div class="tab-item ${isActive ? 'active' : ''}" data-tab-id="${tab.id}" data-window-id="${tab.windowId}" data-group-id="${tab.groupId || ''}" ${groupIndicatorStyle}>
+      <div class="tab-item ${isActive ? 'active' : ''} ${quitTargetClass}" data-tab-id="${tab.id}" data-window-id="${tab.windowId}" data-group-id="${tab.groupId || ''}" ${groupIndicatorStyle}>
         <div class="tab-favicon">${favicon}</div>
         <div class="tab-details">
           <div class="tab-title">${escapeHtml(title)}</div>
@@ -1332,7 +1346,6 @@ function setupEventListeners() {
 
     // Quit All button - close all countdown tabs (exclude protected, active, pinned)
     const quitAllBtn = document.getElementById('quitAllBtn');
-    let quitConfirmMode = false;
 
     quitAllBtn.addEventListener('click', async () => {
         if (!quitConfirmMode) {
@@ -1344,6 +1357,8 @@ function setupEventListeners() {
             // Swap positions to prevent accidental double-click
             protectBtn.style.order = '2';
             quitAllBtn.style.order = '1';
+            // Re-render tabs to show quit targets in red
+            renderTabsList();
             return;
         }
 
@@ -1407,6 +1422,8 @@ function setupEventListeners() {
         protectBtn.style.order = '';
         quitAllBtn.style.order = '';
         updateProtectButton();
+        // Re-render tabs to remove red highlighting
+        renderTabsList();
     }
 
     // Edit Mode toggle
