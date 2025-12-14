@@ -17,6 +17,7 @@ let tabStates = {};
 let settings = {};
 let activeTabsByWindow = {}; // Track active tab per window: { windowId: tabId }
 let focusedWindowId = null; // Track the currently focused window
+let explicitlyClosedTabs = new Set(); // Track tabs being closed via our message handlers to prevent double logging
 
 // Initialize extension
 async function initialize() {
@@ -301,6 +302,21 @@ async function onTabCreated(tab) {
 
 // Handle tab removal
 async function onTabRemoved(tabId, removeInfo) {
+    // Skip logging if tab was explicitly closed via our message handler
+    // (it was already logged with the correct reason)
+    if (explicitlyClosedTabs.has(tabId)) {
+        explicitlyClosedTabs.delete(tabId);
+        delete tabStates[tabId];
+
+        // Clean up window tracking if window is being closed
+        if (removeInfo.isWindowClosing && activeTabsByWindow[removeInfo.windowId]) {
+            delete activeTabsByWindow[removeInfo.windowId];
+        }
+
+        await saveTabStates(tabStates);
+        return;
+    }
+
     // Record to history if tab state exists (manual browser close)
     const tabState = tabStates[tabId];
     if (tabState) {
@@ -527,6 +543,10 @@ async function handleMessage(message, sender, sendResponse) {
                 if (message.tabId) {
                     try {
                         const tab = await chrome.tabs.get(message.tabId);
+
+                        // Mark tab as explicitly closed to prevent double logging
+                        explicitlyClosedTabs.add(message.tabId);
+
                         await addHistoryEntry({
                             url: tab.url,
                             title: tab.title || 'Untitled',
@@ -538,6 +558,8 @@ async function handleMessage(message, sender, sendResponse) {
                         await chrome.tabs.remove(message.tabId);
                         sendResponse({ success: true });
                     } catch (error) {
+                        // Clean up if error occurs
+                        explicitlyClosedTabs.delete(message.tabId);
                         sendResponse({ success: false, error: error.message });
                     }
                 } else {
