@@ -1037,6 +1037,7 @@ svg use {
 .sortable-ghost {
   opacity: 0.4;
   background: var(--macos-bg-secondary);
+  border-radius: 6px;
 }
 
 /* Chosen element - the item being dragged */
@@ -1044,10 +1045,9 @@ svg use {
   opacity: 0.7;
 }
 
-/* Drag element - the visual copy that follows cursor */
+/* Drag element - hide the clone that follows cursor (we only show ghost in-place) */
 .sortable-drag {
-  opacity: 0.9;
-  box-shadow: 0 8px 24px var(--macos-shadow-strong);
+  opacity: 0 !important;
 }
 
 /* Smooth transitions for items shifting during drag */

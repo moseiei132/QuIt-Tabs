@@ -745,8 +745,8 @@ function initializeSortable() {
         handle: '.tab-item, .group-header-row',  // Allow dragging tabs AND Chrome tab group headers (NOT window headers)
         draggable: '.tab-row', // The row is what moves
         filter: '.window-header-row', // Exclude window headers from dragging
-        // Smooth animations
-        forceFallback: false,
+        // Use fallback mode so we can hide the drag clone (native HTML5 drag creates its own image)
+        forceFallback: true,
 
         // Called when dragging starts
         onStart: function (evt) {
