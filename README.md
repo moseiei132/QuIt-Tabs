@@ -55,6 +55,11 @@ Protect tabs from auto-closing with a single click:
 - ⏸️ **Frozen Countdown** - Protected tabs show shield icon and paused timer
 - 🔄 **Quick Toggle** - Easy on/off protection in the popup
 
+### History
+- 📜 **Closed Tabs Log** - View a history of tabs closed by the extension
+- 🔄 **Restore Tabs** - One-click restore for any accidentally closed tab
+- 🧹 **Privacy Control** - Clear history at any time; data stays local
+
 ### Advanced Features
 - 🎨 **Native macOS Design** - Beautiful light/dark mode support
 - 👁️ **Current Tab Toggle** - Show/hide current tab section with eye icon

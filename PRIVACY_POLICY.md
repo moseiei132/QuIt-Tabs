@@ -1,6 +1,6 @@
 # Privacy Policy for QuIt Tabs
 
-**Last Updated:** December 12, 2025
+**Last Updated:** December 15, 2025
 
 This Privacy Policy describes how **QuIt Tabs** ("we", "us", or "our") collects, uses, and discloses information when you use our Chrome Extension.
 
@@ -12,6 +12,7 @@ We are committed to protecting your privacy. **QuIt Tabs is designed to be priva
 
 *   **Tabs and Browsing Activity:** The extension monitors the activity status of your open tabs (e.g., when they were last accessed) to determine if they should be auto-closed. This data resides solely in your browser's memory and local storage. It is never sent to us or any third parties.
 *   **Settings and Preferences:** Your configuration settings (e.g., custom timers, protected tabs, "Single Window Mode" preference) are saved using Chrome's `storage` API. This data is synced across your signed-in Chrome browsers if you have Chrome Sync enabled, but it is handled directly by Chrome and is not accessible to us.
+*   **Extension History (Local Only):** We store a separate, local log of tabs closed *specifically by QuIt Tabs*. This allows you to review and restore auto-closed tabs conveniently. **Use of this feature does NOT read, modify, or interact with your standard browser history.** This log is stored exclusively in your browser's local storage and is never transmitted anywhere. You can clear this extension-specific history at any time.
 *   **Window Focus:** We track which browser window is currently in focus to support the "Single Window Mode" feature. This interaction data is transient and used only for immediate logic.
 
 ## 2. Permissions
