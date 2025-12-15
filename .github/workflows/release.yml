@@ -52,6 +52,10 @@ jobs:
             ## QuIt Tabs v${{ steps.version.outputs.version }}
             
             ### Installation
+            **Chrome Web Store:**
+            [Install from Chrome Web Store](https://chromewebstore.google.com/detail/boahkmlnechnockgjnkgnafllkpajdjm)
+
+            **Manual Installation:**
             1. Download the `.zip` file below
             2. Extract to a folder
             3. Open Chrome → `chrome://extensions`
