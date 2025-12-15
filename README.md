@@ -129,19 +129,40 @@ QuIt-Tabs/
 ├── background.js          # Service worker - tab states, countdown, alarms
 ├── popup/                 # Extension popup
 │   ├── popup.html         # Main popup UI
-│   ├── popup.js           # Popup logic, tab rendering, batch operations
+│   ├── popup.js           # Main entry point, initialization
 │   ├── popup.css          # Popup styling
-│   └── icons.svg          # SVG icon sprites
-
+│   ├── icons.svg          # SVG icon sprites
+│   └── modules/           # Modular JavaScript
+│       ├── state.js       # Global state management
+│       ├── utils.js       # Utility functions (formatTime, escapeHtml, etc.)
+│       ├── tabs.js        # Tab loading, rendering & list management
+│       ├── currentTab.js  # Current tab display & countdown
+│       ├── batchActions.js # Batch operations (move, close, protect)
+│       ├── dragDrop.js    # Drag-and-drop (Sortable.js)
+│       ├── contextMenu.js # Right-click context menus
+│       ├── tabGroups.js   # Tab group management
+│       ├── settings.js    # Settings panel & per-site timeouts
+│       └── events.js      # Event listeners setup
+├── history/               # History page
+│   ├── history.html       # History UI
+│   ├── history.js         # History logic & insights
+│   └── history.css        # History styling
 ├── utils/                 # Shared utilities
 │   ├── storage.js         # Settings and state persistence
-│   └── quit-integration.js # QuIt app URL parameter handling
+│   ├── quit-integration.js # QuIt app URL parameter handling
+│   └── insights.js        # History analysis engine
+├── lib/                   # Third-party libraries
 └── icons/                 # Extension icons
 ```
 
 ### Key Files
 - **background.js** - Manages tab states, countdown logic, alarm handling, QuIt integration
-- **popup/popup.js** - Main UI, tab list, batch operations, edit mode
+- **popup/popup.js** - Main entry point, orchestrates modules
+- **popup/modules/** - Modular JavaScript components:
+  - `state.js` - Global state management
+  - `tabs.js` - Tab rendering and list management
+  - `dragDrop.js` - Sortable.js drag-and-drop logic
+  - `contextMenu.js` - Right-click context menus
 - **utils/storage.js** - Settings and state persistence
 - **utils/quit-integration.js** - Handles QuIt app URL parameters
 
@@ -165,7 +186,7 @@ Part of the QuIt ecosystem:
 
 ## 👨‍💻 Author
 
-**Dulyawat** - [GitHub](https://github.com/moseiei132)
+**moseiei132** - [GitHub](https://github.com/moseiei132)
 
 ## 🙏 Acknowledgments
 
