@@ -103,10 +103,15 @@ export function renderGroupedTabs(tabs) {
         // Sort tabs by index within this window
         windowTabs.sort((a, b) => a.index - b.index);
 
+        // Get active tab title for window header
+        const activeTab = windowTabs.find(t => t.active) || windowTabs[0];
+        const windowTitle = activeTab?.title || 'Window';
+        const shortWindowTitle = windowTitle.length > 30 ? windowTitle.substring(0, 30) + '…' : windowTitle;
+
         // Add window header as a non-draggable row
         html += `<div class="tab-row window-header-row" data-window-id="${windowId}">
           <div class="window-group-header">
-            🪟 Window ${windowId} (${windowTabs.length} tabs)
+            🪟 ${shortWindowTitle} (${windowTabs.length})
           </div>
         </div>`;
 
