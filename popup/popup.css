@@ -1517,6 +1517,7 @@ svg use {
   text-align: center;
   outline: none;
   font-family: inherit;
+  appearance: textfield;
   -moz-appearance: textfield;
 }
 
