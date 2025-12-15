@@ -10,6 +10,9 @@ A Chrome extension that automatically closes inactive tabs after a configurable 
 </a>
 
 <br />
+<br />
+
+## Screenshots
 
 ![QuIt-Tabs Extension](screenshots/1.png)
 
