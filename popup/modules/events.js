@@ -159,10 +159,14 @@ export function setupEventListeners() {
     }
 
     // Edit Mode toggle
-    document.getElementById('editModeBtn').addEventListener('click', () => {
+    document.getElementById('editModeBtn').addEventListener('click', async () => {
+        const { initializeSortable } = await import('./dragDrop.js');
         setEditMode(!editMode);
         document.getElementById('editModeBtn').classList.toggle('active', editMode);
         document.getElementById('tabsList').classList.toggle('edit-mode', editMode);
+
+        // Reinitialize Sortable with new disabled state
+        initializeSortable();
 
         // Clear selections when exiting edit mode
         if (!editMode) {
@@ -187,37 +191,165 @@ export function setupEventListeners() {
         renderTabsList();
     });
 
-    // Batch action handlers
-    document.getElementById('moveToGroupSelect').addEventListener('change', async (e) => {
-        if (e.target.value) {
-            await moveSelectedToGroup(e.target.value);
-            e.target.value = '';
-        }
+    // Custom Action Menu
+    const actionMenuBtn = document.getElementById('actionMenuBtn');
+    const actionMenu = document.getElementById('actionMenu');
+    const actionSubmenu = document.getElementById('actionSubmenu');
+    const submenuItems = document.getElementById('submenuItems');
+
+    // Toggle main menu
+    actionMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isVisible = actionMenu.style.display !== 'none';
+        actionMenu.style.display = isVisible ? 'none' : 'block';
+        actionSubmenu.style.display = 'none';
     });
 
-    document.getElementById('moveToWindowSelect').addEventListener('change', async (e) => {
-        if (e.target.value) {
-            await moveSelectedToWindow(e.target.value);
-            e.target.value = '';
-        }
-    });
+    // Handle menu item clicks
+    actionMenu.addEventListener('click', async (e) => {
+        const item = e.target.closest('.action-menu-item');
+        if (!item) return;
 
-    // Batch action dropdown (protect, unprotect, ungroup, close)
-    document.getElementById('batchActionSelect').addEventListener('change', async (e) => {
-        const action = e.target.value;
-        if (!action) return;
+        e.stopPropagation();
+        const action = item.dataset.action;
 
         if (action === 'protect') {
             await batchProtect(true);
+            hideMenus();
         } else if (action === 'unprotect') {
             await batchProtect(false);
+            hideMenus();
         } else if (action === 'ungroup') {
             await ungroupSelected();
+            hideMenus();
         } else if (action === 'close') {
             await closeSelectedTabs();
+            hideMenus();
+        } else if (action === 'group') {
+            // Show group submenu
+            const { tabGroups, allTabs } = await import('./state.js');
+            submenuItems.innerHTML = '';
+            Object.entries(tabGroups).forEach(([id, info]) => {
+                const groupTabCount = allTabs.filter(t => t.groupId === parseInt(id)).length;
+                const btn = document.createElement('button');
+                btn.className = 'action-menu-item';
+                btn.dataset.groupId = id;
+                btn.innerHTML = `${info.title} <span class="menu-count">${groupTabCount}</span>`;
+                submenuItems.appendChild(btn);
+            });
+            if (Object.keys(tabGroups).length === 0) {
+                submenuItems.innerHTML = '<div class="action-menu-label">No groups available</div>';
+            }
+            actionMenu.style.display = 'none';
+            actionSubmenu.style.display = 'block';
+        } else if (action === 'window') {
+            // Show window submenu
+            const { allTabs } = await import('./state.js');
+            const windowIds = [...new Set(allTabs.map(t => t.windowId))];
+            submenuItems.innerHTML = '';
+            windowIds.forEach(wId => {
+                const windowTabs = allTabs.filter(t => t.windowId === wId);
+                const activeTab = windowTabs.find(t => t.active) || windowTabs[0];
+                const title = activeTab?.title || 'Window';
+                const shortTitle = title.length > 20 ? title.substring(0, 20) + '…' : title;
+                const btn = document.createElement('button');
+                btn.className = 'action-menu-item';
+                btn.dataset.windowId = wId;
+                btn.innerHTML = `${shortTitle} <span class="menu-count">${windowTabs.length}</span>`;
+                submenuItems.appendChild(btn);
+            });
+            actionMenu.style.display = 'none';
+            actionSubmenu.style.display = 'block';
+        }
+    });
+
+    // Handle submenu clicks
+    actionSubmenu.addEventListener('click', async (e) => {
+        const item = e.target.closest('.action-menu-item');
+        if (!item) return;
+
+        e.stopPropagation();
+
+        if (item.dataset.action === 'back') {
+            actionSubmenu.style.display = 'none';
+            actionMenu.style.display = 'block';
+            hidePreview();
+            return;
         }
 
-        e.target.value = ''; // Reset dropdown
+        if (item.dataset.groupId) {
+            await moveSelectedToGroup(item.dataset.groupId);
+            hideMenus();
+        } else if (item.dataset.windowId) {
+            await moveSelectedToWindow(item.dataset.windowId);
+            hideMenus();
+        }
+    });
+
+    // Handle hover on submenu items to show preview panel
+    const tabsPreview = document.getElementById('tabsPreview');
+    const previewTabs = document.getElementById('previewTabs');
+    const previewTitle = document.getElementById('previewTitle');
+    const previewCount = document.getElementById('previewCount');
+
+    submenuItems.addEventListener('mouseover', async (e) => {
+        const item = e.target.closest('.action-menu-item');
+        if (!item) return;
+
+        const { allTabs } = await import('./state.js');
+        let tabs = [];
+        let titleText = '';
+
+        if (item.dataset.groupId) {
+            const groupId = parseInt(item.dataset.groupId);
+            tabs = allTabs.filter(t => t.groupId === groupId);
+            titleText = 'Tabs in Group';
+        } else if (item.dataset.windowId) {
+            const windowId = parseInt(item.dataset.windowId);
+            tabs = allTabs.filter(t => t.windowId === windowId);
+            titleText = 'Tabs in Window';
+        }
+
+        if (tabs.length > 0) {
+            previewTitle.textContent = titleText;
+            previewCount.textContent = tabs.length;
+            previewTabs.innerHTML = tabs.map(tab => {
+                const title = tab.title || 'Untitled';
+                const shortTitle = title.length > 35 ? title.substring(0, 35) + '…' : title;
+                const favicon = tab.favIconUrl
+                    ? `<img src="${tab.favIconUrl}" alt="">`
+                    : '<svg width="14" height="14" style="opacity:0.3"><use href="#icon-globe"/></svg>';
+                return `<div class="preview-tab-item">${favicon}<span>${shortTitle}</span></div>`;
+            }).join('');
+            showPreview();
+        }
+    });
+
+    submenuItems.addEventListener('mouseleave', () => {
+        hidePreview();
+    });
+
+    function hidePreview() {
+        tabsPreview.style.display = 'none';
+        document.getElementById('tabsList').classList.remove('preview-active');
+    }
+
+    function showPreview() {
+        tabsPreview.style.display = 'block';
+        document.getElementById('tabsList').classList.add('preview-active');
+    }
+
+    function hideMenus() {
+        actionMenu.style.display = 'none';
+        actionSubmenu.style.display = 'none';
+        hidePreview();
+    }
+
+    // Close menus when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.action-menu-container')) {
+            hideMenus();
+        }
     });
 
     document.getElementById('clearSelectionBtn').addEventListener('click', clearSelection);

@@ -181,24 +181,84 @@
       <!-- Batch Actions Toolbar -->
       <div id="batchActionsBar" class="batch-actions-bar" style="display: none;">
         <div class="batch-info">
-          (<span id="selectedCount">0</span>)
+          <span id="selectedCount">0</span> selected
         </div>
         <div class="batch-actions">
-          <select id="moveToGroupSelect" class="batch-select">
-            <option value="">Group...</option>
-          </select>
-          <select id="moveToWindowSelect" class="batch-select">
-            <option value="">Window...</option>
-          </select>
-          <select id="batchActionSelect" class="batch-select batch-action">
-            <option value="">Action...</option>
-            <option value="protect">Protect</option>
-            <option value="unprotect">Unprotect</option>
-            <option value="ungroup">Ungroup</option>
-            <option value="close">Close</option>
-          </select>
-          <button id="clearSelectionBtn" class="btn-batch-clear">Clear</button>
+          <button id="clearSelectionBtn" class="btn-batch-clear">
+            <svg width="10" height="10">
+              <use href="#icon-close" />
+            </svg>
+          </button>
+          <div class="action-menu-container">
+            <button id="actionMenuBtn" class="batch-select">Actions ▾</button>
+            <div id="actionMenu" class="action-menu" style="display: none;">
+              <div class="action-menu-section">
+                <div class="action-menu-label">Move</div>
+                <button class="action-menu-item" data-action="group">
+                  <svg width="14" height="14">
+                    <use href="#icon-folder" />
+                  </svg>
+                  Move to Group
+                </button>
+                <button class="action-menu-item" data-action="window">
+                  <svg width="14" height="14">
+                    <use href="#icon-globe" />
+                  </svg>
+                  Move to Window
+                </button>
+                <button class="action-menu-item" data-action="ungroup">
+                  <svg width="14" height="14">
+                    <use href="#icon-unlink" />
+                  </svg>
+                  Ungroup
+                </button>
+              </div>
+              <div class="action-menu-section">
+                <div class="action-menu-label">Protect</div>
+                <button class="action-menu-item" data-action="protect">
+                  <svg width="14" height="14">
+                    <use href="#icon-shield-filled" />
+                  </svg>
+                  Protect
+                </button>
+                <button class="action-menu-item" data-action="unprotect">
+                  <svg width="14" height="14">
+                    <use href="#icon-shield" />
+                  </svg>
+                  Unprotect
+                </button>
+              </div>
+              <div class="action-menu-section">
+                <div class="action-menu-label">Danger</div>
+                <button class="action-menu-item action-menu-danger" data-action="close">
+                  <svg width="14" height="14">
+                    <use href="#icon-close" />
+                  </svg>
+                  Close Tabs
+                </button>
+              </div>
+            </div>
+            <!-- Submenu for group/window selection -->
+            <div id="actionSubmenu" class="action-menu action-submenu" style="display: none;">
+              <button class="action-menu-item action-menu-back" data-action="back">
+                <svg width="14" height="14" style="transform: rotate(180deg)">
+                  <use href="#icon-play" />
+                </svg>
+                Back
+              </button>
+              <div id="submenuItems"></div>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <!-- Tabs Preview Panel (shown on hover in edit mode) -->
+      <div id="tabsPreview" class="tabs-preview" style="display: none;">
+        <div class="preview-header">
+          <span id="previewTitle">Tabs in Group</span>
+          <span id="previewCount" class="preview-count">0</span>
+        </div>
+        <div id="previewTabs" class="preview-tabs"></div>
       </div>
 
       <div id="tabsList" class="tabs-list">

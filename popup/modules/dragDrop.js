@@ -4,7 +4,7 @@
  */
 
 import {
-    allTabs, groupByWindow, sortableInstance,
+    allTabs, groupByWindow, sortableInstance, editMode,
     setSortableInstance
 } from './state.js';
 import { loadAllTabs } from './tabs.js';
@@ -35,6 +35,7 @@ export function initializeSortable() {
         handle: '.tab-item, .group-header-row',  // Allow dragging tabs AND Chrome tab group headers (NOT window headers)
         draggable: '.tab-row', // The row is what moves
         filter: '.window-header-row', // Exclude window headers from dragging
+        disabled: editMode, // Disable dragging when in edit mode
         // Use fallback mode so we can hide the drag clone (native HTML5 drag creates its own image)
         forceFallback: true,
 

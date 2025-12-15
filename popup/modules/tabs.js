@@ -5,7 +5,8 @@
 
 import {
     currentTab, allTabs, tabGroups, tabStates, settings,
-    groupByWindow, searchQuery, quitConfirmMode,
+    groupByWindow, searchQuery, quitConfirmMode, editMode,
+    selectedTabIds, addSelectedTabId, deleteSelectedTabId,
     setAllTabs, setTabGroups
 } from './state.js';
 import { escapeHtml, formatTime, isSpecialTab } from './utils.js';
@@ -307,10 +308,12 @@ export function renderTabItem(tab, groupColor = null) {
         }
     }
 
+    // Check if tab is selected in edit mode
+    const isSelected = selectedTabIds.has(tab.id);
+
     return `
     <div class="tab-row">
-      <input type="checkbox" class="tab-checkbox-outer" data-tab-id="${tab.id}">
-      <div class="tab-item ${isActive ? 'active' : ''} ${quitTargetClass}" data-tab-id="${tab.id}" data-window-id="${tab.windowId}" data-group-id="${tab.groupId || ''}" ${groupIndicatorStyle}>
+      <div class="tab-item ${isActive ? 'active' : ''} ${quitTargetClass} ${isSelected ? 'selected' : ''}" data-tab-id="${tab.id}" data-window-id="${tab.windowId}" data-group-id="${tab.groupId || ''}" ${groupIndicatorStyle}>
         <div class="tab-favicon">${favicon}</div>
         <div class="tab-details">
           <div class="tab-title">${escapeHtml(title)}</div>
@@ -335,24 +338,33 @@ export function renderTabItem(tab, groupColor = null) {
  * Attach click listeners to tab items
  */
 export function attachTabClickListeners() {
-    // Attach checkbox handlers
-    document.querySelectorAll('.tab-checkbox-outer').forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => {
-            e.stopPropagation();
-            updateBatchActionsBar();
-        });
-    });
-
     // Attach tab item click handlers
     document.querySelectorAll('.tab-item').forEach(item => {
         const tabId = parseInt(item.dataset.tabId);
         const windowId = parseInt(item.dataset.windowId);
 
-        // Click on tab item - focus tab
+        // Click on tab item
         item.addEventListener('click', async (e) => {
-            // Don't switch if clicking buttons or close
-            if (e.target.closest('.btn') || e.target.closest('.tab-close-btn')) return;
+            // Don't process if clicking close button
+            if (e.target.closest('.tab-close-btn')) return;
 
+            // In edit mode, toggle selection
+            if (editMode) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (selectedTabIds.has(tabId)) {
+                    deleteSelectedTabId(tabId);
+                    item.classList.remove('selected');
+                } else {
+                    addSelectedTabId(tabId);
+                    item.classList.add('selected');
+                }
+                updateBatchActionsBar();
+                return;
+            }
+
+            // Normal mode - focus tab
             await focusTab(tabId, windowId);
         });
 

@@ -19,51 +19,12 @@ import { refreshTabStates } from './currentTab.js';
  * Update batch actions bar visibility and populate dropdowns
  */
 export function updateBatchActionsBar() {
-    const checkboxes = document.querySelectorAll('.tab-checkbox-outer:checked');
-    const newSelectedIds = new Set([...checkboxes].map(cb => parseInt(cb.dataset.tabId)));
-    setSelectedTabIds(newSelectedIds);
-
     const batchBar = document.getElementById('batchActionsBar');
     const selectedCount = document.getElementById('selectedCount');
 
     if (selectedTabIds.size > 0) {
         batchBar.style.display = 'flex';
         selectedCount.textContent = selectedTabIds.size;
-
-        // Populate group dropdown
-        const groupSelect = document.getElementById('moveToGroupSelect');
-        groupSelect.innerHTML = '<option value="">Group...</option>';
-        Object.entries(tabGroups).forEach(([id, info]) => {
-            groupSelect.innerHTML += `<option value="${id}">${escapeHtml(info.title)}</option>`;
-        });
-
-        // Populate window dropdown with active tab titles
-        const windowSelect = document.getElementById('moveToWindowSelect');
-        const windowIds = [...new Set(allTabs.map(t => t.windowId))];
-        windowSelect.innerHTML = '<option value="">Window...</option>';
-
-        windowIds.forEach(wId => {
-            // Find active tab in this window
-            const windowTabs = allTabs.filter(t => t.windowId === wId);
-            const activeTab = windowTabs.find(t => t.active) || windowTabs[0];
-            const activeTitle = activeTab?.title || 'Window';
-
-            // Truncate title for display
-            const displayTitle = activeTitle.length > 25 ? activeTitle.substring(0, 25) + '…' : activeTitle;
-
-            // Create tooltip with all tab titles (truncated)
-            const allTitles = windowTabs.map(t => {
-                const title = t.title || 'Untitled';
-                return title.length > 30 ? title.substring(0, 30) + '...' : title;
-            }).join('\n• ');
-            const tooltip = `${windowTabs.length} tabs:\n• ${allTitles}`;
-
-            const option = document.createElement('option');
-            option.value = wId;
-            option.textContent = displayTitle;
-            option.title = tooltip;
-            windowSelect.appendChild(option);
-        });
     } else {
         batchBar.style.display = 'none';
     }
@@ -129,7 +90,10 @@ export async function ungroupSelected() {
  * Clear all selections
  */
 export function clearSelection() {
-    document.querySelectorAll('.tab-checkbox-outer').forEach(cb => cb.checked = false);
+    // Remove selected class from all items
+    document.querySelectorAll('.tab-item.selected').forEach(item => {
+        item.classList.remove('selected');
+    });
     clearSelectedTabIds();
     updateBatchActionsBar();
 }
@@ -214,8 +178,7 @@ export async function focusTab(tabId, windowId) {
  * @param {boolean} protect - True to protect, false to unprotect
  */
 export async function batchProtect(protect) {
-    const checkboxes = document.querySelectorAll('.tab-checkbox-outer:checked');
-    const tabIds = Array.from(checkboxes).map(cb => parseInt(cb.dataset.tabId));
+    const tabIds = Array.from(selectedTabIds);
 
     if (tabIds.length === 0) return;
 

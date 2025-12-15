@@ -615,7 +615,7 @@ svg use {
   background: var(--macos-text-secondary);
 }
 
-/* Tab Row (wrapper for checkbox + tab-item) */
+/* Tab Row (wrapper for tab-item) */
 .tab-row {
   display: flex;
   align-items: center;
@@ -624,31 +624,38 @@ svg use {
   transition: transform 0.2s ease-out, opacity 0.2s ease;
 }
 
-.tab-checkbox-outer {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: var(--macos-accent);
-  flex-shrink: 0;
-  margin: 0;
-  display: none; /* Hidden by default */
+/* Edit Mode Styles */
+
+/* Selected tab styling in edit mode */
+.tabs-list.edit-mode .tab-item.selected {
+  background: rgba(0, 122, 255, 0.15);
+  border-color: var(--macos-accent);
 }
 
-/* Show checkboxes in edit mode */
-.tabs-list.edit-mode .tab-checkbox-outer {
-  display: block;
+.tabs-list.edit-mode .tab-item.selected .tab-title {
+  color: var(--macos-accent);
 }
 
-/* Adjust tab-item width in edit mode */
+/* Hide close button in edit mode */
+.tabs-list.edit-mode .tab-close-btn {
+  display: none !important;
+}
+
+/* Remove active tab highlight in edit mode */
+.tabs-list.edit-mode .tab-item.active {
+  background: transparent;
+  color: var(--macos-text);
+}
+
+.tabs-list.edit-mode .tab-item.active .tab-title,
+.tabs-list.edit-mode .tab-item.active .tab-url,
+.tabs-list.edit-mode .tab-item.active .countdown-time {
+  color: inherit;
+}
+
+/* Cursor pointer in edit mode to indicate clickable for selection */
 .tabs-list.edit-mode .tab-item {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.tabs-list.edit-mode .tab-row {
-  min-width: 0;
-  overflow: hidden;
+  cursor: pointer;
 }
 
 /* Tab Item */
@@ -672,54 +679,65 @@ svg use {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 8px;
-  background: var(--macos-bg-secondary);
+  padding: 6px 10px;
+  background: var(--macos-accent);
   border-bottom: 0.5px solid var(--macos-divider);
   gap: 8px;
 }
 
 .batch-info {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--macos-text);
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .batch-actions {
   display: flex;
-  gap: 3px;
+  gap: 6px;
   align-items: center;
-  flex-wrap: wrap;
   flex: 1;
   min-width: 0;
+  justify-content: space-between;
 }
 
 .batch-select {
-  padding: 2px 4px;
-  border-radius: 4px;
-  border: 0.5px solid var(--macos-divider);
-  background: var(--macos-bg);
-  color: var(--macos-text);
-  font-size: 9px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 11px;
+  font-weight: 500;
   font-family: inherit;
   cursor: pointer;
   outline: none;
-  min-width: 50px;
-  max-width: 70px;
+  min-width: 80px;
+  flex: 1;
+}
+
+.batch-select option,
+.batch-select optgroup {
+  background: var(--macos-bg);
+  color: var(--macos-text);
 }
 
 .batch-select:hover {
-  background: var(--macos-bg-tertiary);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.batch-select:focus {
+  background: rgba(255, 255, 255, 0.35);
 }
 
 .btn-batch {
-  padding: 3px 6px;
-  border-radius: 4px;
-  border: 0.5px solid var(--macos-divider);
-  background: var(--macos-bg);
-  color: var(--macos-text);
-  font-size: 10px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -728,17 +746,17 @@ svg use {
 }
 
 .btn-batch:hover {
-  background: var(--macos-bg-tertiary);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .btn-batch-clear {
-  padding: 3px 6px;
-  border-radius: 4px;
+  padding: 5px 8px;
+  border-radius: 5px;
   border: none;
-  background: var(--macos-red);
-  color: white;
-  font-size: 10px;
-  font-weight: 500;
+  background: white;
+  color: var(--macos-red);
+  font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
   font-family: inherit;
@@ -750,12 +768,12 @@ svg use {
 }
 
 .btn-batch-danger {
-  padding: 3px 6px;
-  border-radius: 4px;
+  padding: 6px 12px;
+  border-radius: 6px;
   border: none;
-  background: var(--macos-orange);
+  background: rgba(255, 255, 255, 0.2);
   color: white;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -764,10 +782,183 @@ svg use {
 }
 
 .btn-batch-danger:hover {
-  opacity: 0.9;
+  background: rgba(255, 255, 255, 0.3);
 }
 
-/* Tab item close button */
+/* Custom Action Menu */
+.action-menu-container {
+  position: relative;
+}
+
+.action-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--macos-bg);
+  border: 0.5px solid var(--macos-divider);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  margin-top: 6px;
+  overflow: hidden;
+  z-index: 200;
+  width: 160px;
+}
+
+.action-menu-section {
+  border-bottom: 0.5px solid var(--macos-divider);
+  padding: 4px 0;
+}
+
+.action-menu-section:last-child {
+  border-bottom: none;
+}
+
+.action-menu-label {
+  padding: 4px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--macos-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.action-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--macos-text);
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.action-menu-item svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.action-menu-item:hover {
+  background: var(--macos-bg-secondary);
+}
+
+.action-menu-item.action-menu-danger {
+  color: var(--macos-red);
+}
+
+.action-menu-item.action-menu-danger:hover {
+  background: rgba(255, 59, 48, 0.1);
+}
+
+.action-menu-item.action-menu-back {
+  color: var(--macos-accent);
+  font-weight: 500;
+  border-bottom: 0.5px solid var(--macos-divider);
+}
+
+.action-submenu {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+#submenuItems .action-menu-item {
+  padding-left: 16px;
+  padding-right: 40px;
+  position: relative;
+}
+
+.menu-count {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--macos-accent);
+  color: white;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* Tabs Preview Panel (shown below batch bar) */
+.tabs-preview {
+  position: relative;
+  z-index: 50;
+  background: var(--macos-bg-secondary);
+  border-bottom: 0.5px solid var(--macos-divider);
+  max-height: 120px;
+  overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.tabs-preview::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+/* Blur tabs list when preview is showing */
+.tabs-list.preview-active {
+  filter: blur(2px);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--macos-text-secondary);
+  background: var(--macos-bg-tertiary);
+  border-bottom: 0.5px solid var(--macos-divider);
+}
+
+.preview-count {
+  background: var(--macos-accent);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+}
+
+.preview-tabs {
+  padding: 4px 0;
+}
+
+.preview-tab-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--macos-text);
+  overflow: hidden;
+}
+
+.preview-tab-item:hover {
+  background: var(--macos-bg-tertiary);
+}
+
+.preview-tab-item img,
+.preview-tab-item svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.preview-tab-item span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .tab-close-btn {
   display: none;
   width: 16px;
