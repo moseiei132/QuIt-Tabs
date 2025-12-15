@@ -7,8 +7,13 @@ A Chrome extension that automatically closes inactive tabs after a configurable 
 <a href="https://chromewebstore.google.com/detail/boahkmlnechnockgjnkgnafllkpajdjm">
     <img src="https://img.shields.io/badge/Chrome_Web_Store-Available-4285F4?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Available in the Chrome Web Store" />
 </a>
+</a>
+
+<br />
 
 ![QuIt-Tabs Extension](screenshots/1.png)
+
+<br />
 
 ## ✨ Features
 
