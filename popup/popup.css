@@ -13,7 +13,7 @@
   --macos-green: #34c759;
   --macos-shadow: rgba(0, 0, 0, 0.1);
   --macos-shadow-strong: rgba(0, 0, 0, 0.15);
-  
+
   /* Chrome Tab Group Colors */
   --group-grey: #5f6368;
   --group-blue: #1a73e8;
@@ -38,7 +38,7 @@
     --macos-accent-hover: #409cff;
     --macos-shadow: rgba(0, 0, 0, 0.3);
     --macos-shadow-strong: rgba(0, 0, 0, 0.5);
-    
+
     /* Chrome Tab Group Colors (Dark Mode) */
     --group-grey: #9aa0a6;
     --group-blue: #8ab4f8;
@@ -69,6 +69,32 @@ body {
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================
+   Expanded (Side Panel) Mode – opened via chrome.sidePanel.open()
+   ============================================================ */
+body.expanded-mode {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+}
+
+body.expanded-mode .container {
+  height: 100vh;
+  width: 100%;
+}
+
+/* In expanded mode the collapse button is visible, expand hidden */
+body.expanded-mode #expandBtn {
+  display: none !important;
+}
+
+body.expanded-mode #collapseBtn {
+  display: flex !important;
 }
 
 /* SVG Icons */
@@ -324,7 +350,7 @@ svg use {
   line-height: 1;
 }
 
-.countdown-time > span:last-child {
+.countdown-time>span:last-child {
   font-size: 8px;
   font-weight: 600;
   text-transform: uppercase;
@@ -893,12 +919,15 @@ svg use {
   border-bottom: 0.5px solid var(--macos-divider);
   max-height: 120px;
   overflow-y: auto;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE/Edge */
 }
 
 .tabs-preview::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
+  display: none;
+  /* Chrome/Safari */
 }
 
 /* Blur tabs list when preview is showing */
@@ -1061,7 +1090,7 @@ svg use {
   margin-bottom: 6px;
 }
 
-.tab-item:not([style*="border-left"]) + .tab-group {
+.tab-item:not([style*="border-left"])+.tab-group {
   margin-top: 6px;
 }
 
@@ -1263,6 +1292,7 @@ svg use {
 .hidden-by-group-drag {
   display: none !important;
 }
+
 .footer {
   display: flex;
   align-items: center;
@@ -1488,12 +1518,12 @@ svg use {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.toggle input:checked + .toggle-slider {
+.toggle input:checked+.toggle-slider {
   background-color: var(--macos-green);
   border-color: var(--macos-green);
 }
 
-.toggle input:checked + .toggle-slider:before {
+.toggle input:checked+.toggle-slider:before {
   transform: translateX(20px);
 }
 
@@ -1699,6 +1729,7 @@ svg use {
     opacity: 0;
     transform: translateY(-2px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1711,6 +1742,7 @@ svg use {
 
 /* macOS-style selection effect */
 @media (prefers-reduced-motion: no-preference) {
+
   .btn,
   .tab-item,
   .icon-btn,

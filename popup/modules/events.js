@@ -11,7 +11,7 @@ import {
 import { loadAllTabs, renderTabsList } from './tabs.js';
 import {
     updateCurrentTab, updateProtectButton, updateCurrentTabCountdown,
-    updateCompactTabInfo, refreshTabStates
+    refreshTabStates
 } from './currentTab.js';
 import {
     updateBatchActionsBar, moveSelectedToGroup, moveSelectedToWindow,
@@ -22,6 +22,14 @@ import { setupSettingsPanel } from './settings.js';
 import { isSpecialTab } from './utils.js';
 
 // ============================================================================
+// Expanded Mode Detection
+// ============================================================================
+// If opened as a Chrome tab with ?expanded=1, apply expanded layout immediately
+if (new URLSearchParams(location.search).get('expanded') === '1') {
+    document.body.classList.add('expanded-mode');
+}
+
+// ============================================================================
 // Event Listeners Setup
 // ============================================================================
 
@@ -29,27 +37,34 @@ import { isSpecialTab } from './utils.js';
  * Set up all event listeners for the popup
  */
 export function setupEventListeners() {
-    // Current tab toggle
-    const toggleCurrentTabBtn = document.getElementById('toggleCurrentTab');
-    const currentTabContent = document.querySelector('.current-tab-content');
-    const compactTabInfo = document.getElementById('compactTabInfo');
-
-    if (toggleCurrentTabBtn && currentTabContent) {
-        // Default state: expanded (active)
-        toggleCurrentTabBtn.classList.add('active');
-
-        toggleCurrentTabBtn.addEventListener('click', () => {
-            const isCollapsed = currentTabContent.classList.toggle('collapsed');
-            toggleCurrentTabBtn.classList.toggle('active', !isCollapsed);
-
-            // Show/hide compact tab info
-            if (compactTabInfo) {
-                compactTabInfo.style.display = isCollapsed ? 'flex' : 'none';
-                if (isCollapsed) {
-                    updateCompactTabInfo();
-                }
-            }
+    // Expand button: open as Side Panel (MetaMask-style, anchored to browser)
+    const expandBtn = document.getElementById('expandBtn');
+    if (expandBtn) {
+        expandBtn.addEventListener('click', async () => {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            // Save mode so next icon click opens side panel automatically
+            await chrome.storage.local.set({ windowMode: 'sidepanel' });
+            await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+            await chrome.sidePanel.open({ windowId: tab.windowId });
+            window.close(); // close popup
         });
+    }
+
+    // Collapse button: close the side panel and revert to popup mode
+    const collapseBtn = document.getElementById('collapseBtn');
+    if (collapseBtn) {
+        collapseBtn.addEventListener('click', async () => {
+            // Save mode so next icon click opens popup normally
+            await chrome.storage.local.set({ windowMode: 'popup' });
+            await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+            window.close();
+        });
+    }
+
+    // Apply expanded mode UI if opened as side panel
+    if (new URLSearchParams(location.search).get('expanded') === '1') {
+        if (expandBtn) expandBtn.style.display = 'none';
+        if (collapseBtn) collapseBtn.style.display = 'flex';
     }
 
     // Protect/Unprotect button

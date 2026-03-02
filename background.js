@@ -67,6 +67,17 @@ async function initialize() {
     // Set up alarm for periodic checks
     chrome.alarms.create('checkTabs', { periodInMinutes: 1 / 6 }); // Every 10 seconds
 
+    // Restore window mode: if last mode was side panel, re-enable panel-on-click behavior
+    try {
+        const { windowMode } = await chrome.storage.local.get('windowMode');
+        const isSidePanel = windowMode === 'sidepanel';
+        await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: isSidePanel });
+        console.log('QuIt Tab Manager: Restored windowMode =', windowMode ?? 'popup');
+    } catch (e) {
+        // sidePanel API not available (older Chrome) — ignore
+        console.warn('QuIt Tab Manager: sidePanel.setPanelBehavior unavailable:', e.message);
+    }
+
     console.log('QuIt Tab Manager: Initialized with', Object.keys(tabStates).length, 'tabs');
 }
 
