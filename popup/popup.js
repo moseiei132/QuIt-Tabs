@@ -46,6 +46,9 @@ async function init() {
         // Set up event listeners
         setupEventListeners();
 
+        // Show What's New banner if this is first open after an update
+        await showWhatsNewBanner();
+
         // Start real-time countdown updates (local calculation, no polling!)
         setInterval(updateCountdowns, 1000);
 
@@ -78,8 +81,34 @@ async function init() {
 }
 
 // ============================================================================
-// Bootstrap
+// What's New Banner
 // ============================================================================
+
+// ⬇️  Bump this ONLY when you want to show a banner (new feature releases).
+// Leave unchanged for bug-fix releases → no banner appears.
+const WHATS_NEW_VERSION = '1.4.0';
+
+async function showWhatsNewBanner() {
+    const { whatsNewDismissedVersion } = await chrome.storage.local.get('whatsNewDismissedVersion');
+    // Show only if this version's banner hasn't been dismissed yet
+    if (whatsNewDismissedVersion === WHATS_NEW_VERSION) return;
+
+    const banner = document.getElementById('whatsNewBanner');
+    const dismissBtn = document.getElementById('whatsNewDismiss');
+    if (!banner) return;
+
+    // Show banner with slide-in animation
+    banner.style.display = 'flex';
+    requestAnimationFrame(() => banner.classList.add('visible'));
+
+    // On dismiss: save dismissed version so banner never shows for this version again
+    dismissBtn?.addEventListener('click', async () => {
+        banner.classList.remove('visible');
+        setTimeout(() => { banner.style.display = 'none'; }, 250);
+        await chrome.storage.local.set({ whatsNewDismissedVersion: WHATS_NEW_VERSION });
+    });
+}
+
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {

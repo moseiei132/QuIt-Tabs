@@ -97,6 +97,75 @@ body.expanded-mode #collapseBtn {
   display: flex !important;
 }
 
+/* ============================================================
+   What's New Banner
+   ============================================================ */
+.whats-new-banner {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, rgba(0, 122, 255, 0.12), rgba(0, 122, 255, 0.06));
+  border-bottom: 0.5px solid rgba(0, 122, 255, 0.25);
+  font-size: 12px;
+  color: var(--macos-text);
+  /* slide-in animation */
+  transform: translateY(-100%);
+  opacity: 0;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.whats-new-banner.visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.whats-new-content {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  color: var(--macos-accent);
+}
+
+.whats-new-content svg {
+  flex-shrink: 0;
+  color: var(--macos-accent);
+}
+
+.whats-new-content span {
+  color: var(--macos-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.whats-new-content strong {
+  color: var(--macos-accent);
+}
+
+.whats-new-dismiss {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 122, 255, 0.15);
+  color: var(--macos-accent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+  padding: 0;
+}
+
+.whats-new-dismiss:hover {
+  background: rgba(0, 122, 255, 0.28);
+}
+
 /* SVG Icons */
 svg {
   display: inline-block;
@@ -110,7 +179,7 @@ svg use {
 }
 
 .logo-icon {
-  color: var(--macos-accent);
+  border-radius: 4px;
 }
 
 .container {
@@ -135,9 +204,6 @@ svg use {
   gap: 8px;
 }
 
-.logo-icon {
-  font-size: 18px;
-}
 
 .logo h1 {
   font-size: 15px;
