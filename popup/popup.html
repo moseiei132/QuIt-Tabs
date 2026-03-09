@@ -106,7 +106,7 @@
           <h1>QuIt</h1>
         </div>
       </div>
-      <div class="header-actions">
+      <div class="header-actions" id="actionButtons">
         <button id="expandBtn" class="icon-btn" title="Open as Tab">
           <svg width="16" height="16">
             <use href="#icon-expand" />
@@ -424,13 +424,15 @@
         <span class="status-indicator" id="statusIndicator"></span>
         <span id="statusText">Active</span>
       </div>
-      <div class="footer-search">
-        <input type="text" id="searchInput" placeholder="Search...">
-        <button id="clearSearch" class="clear-btn" style="display: none;">
-          <svg width="8" height="8">
-            <use href="#icon-close" />
-          </svg>
-        </button>
+      <div class="footer-right" id="footerRight">
+        <div class="footer-search">
+          <input type="text" id="searchInput" placeholder="Search...">
+          <button id="clearSearch" class="clear-btn" style="display: none;">
+            <svg width="8" height="8">
+              <use href="#icon-close" />
+            </svg>
+          </button>
+        </div>
       </div>
     </footer>
 

@@ -65,6 +65,15 @@ export function setupEventListeners() {
     if (new URLSearchParams(location.search).get('expanded') === '1') {
         if (expandBtn) expandBtn.style.display = 'none';
         if (collapseBtn) collapseBtn.style.display = 'flex';
+        
+        // Move action buttons to footer in expanded mode
+        const actionButtons = document.getElementById('actionButtons');
+        const footerRight = document.getElementById('footerRight');
+        if (actionButtons && footerRight) {
+            actionButtons.classList.remove('header-actions');
+            actionButtons.classList.add('footer-actions');
+            footerRight.insertBefore(actionButtons, footerRight.firstChild);
+        }
     }
 
     // Protect/Unprotect button

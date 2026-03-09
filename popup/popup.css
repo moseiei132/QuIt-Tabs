@@ -140,6 +140,10 @@ body.expanded-mode .container {
 }
 
 /* In expanded mode the collapse button is visible, expand hidden */
+body.expanded-mode .header {
+  display: none;
+}
+
 body.expanded-mode #expandBtn {
   display: none !important;
 }
@@ -263,7 +267,8 @@ svg use {
   letter-spacing: -0.2px;
 }
 
-.header-actions {
+.header-actions,
+.footer-actions {
   display: flex;
   gap: 6px;
 }
@@ -1417,6 +1422,12 @@ svg use {
   padding: 8px 12px;
   background: var(--macos-bg);
   border-top: 0.5px solid var(--macos-divider);
+  gap: 8px;
+}
+
+.footer-right {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 
