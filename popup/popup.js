@@ -71,6 +71,26 @@ async function init() {
             if (changeInfo.title || changeInfo.url) {
                 await loadAllTabs();
                 await refreshTabStates();
+                
+                // If current tab updated, update our reference
+                import('./modules/state.js').then(async ({ currentTab, setCurrentTab }) => {
+                    if (currentTab && currentTab.id === tabId) {
+                        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                        if (tab) {
+                            setCurrentTab(tab);
+                            import('./modules/currentTab.js').then(({ updateCurrentTab }) => updateCurrentTab());
+                        }
+                    }
+                });
+            }
+        });
+        chrome.tabs.onActivated.addListener(async (activeInfo) => {
+            const [tab] = await chrome.tabs.query({ active: true, windowId: activeInfo.windowId });
+            if (tab) {
+                setCurrentTab(tab);
+                await refreshTabStates();
+                updateCurrentTab();
+                await loadAllTabs(); // Refresh list to update active highlight
             }
         });
 
