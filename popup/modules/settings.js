@@ -9,6 +9,24 @@ import { escapeHtml, updateExtensionStatus } from './utils.js';
 import { renderTabsList } from './tabs.js';
 
 // ============================================================================
+// Theme
+// ============================================================================
+
+/**
+ * Apply theme to the document root element
+ * @param {'system'|'light'|'dark'} theme
+ */
+export function applyTheme(theme) {
+    if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    } else if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
+}
+
+// ============================================================================
 // Settings Panel Setup
 // ============================================================================
 
@@ -35,6 +53,12 @@ export function setupSettingsPanel() {
         document.getElementById('popupAutoCloseSpecial').checked = settings.autoCloseSpecial;
         document.getElementById('popupPauseOnMedia').checked = settings.pauseOnMedia;
         document.getElementById('popupFocusedWindowOnly').checked = settings.focusedWindowOnly;
+
+        // Sync theme picker active state
+        const currentTheme = settings.theme || 'system';
+        document.querySelectorAll('#themePicker .theme-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.theme === currentTheme);
+        });
 
         // Set version from manifest
         const manifest = chrome.runtime.getManifest();
@@ -105,6 +129,20 @@ export function setupSettingsPanel() {
     // Per-Site Timeout: Add button
     document.getElementById('addPerSiteTimeoutBtn').addEventListener('click', () => {
         showPerSiteTimeoutDialog();
+    });
+
+    // Theme picker
+    document.querySelectorAll('#themePicker .theme-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const theme = btn.dataset.theme;
+            settings.theme = theme;
+            await saveSettings(settings);
+            applyTheme(theme);
+            // Update active state
+            document.querySelectorAll('#themePicker .theme-btn').forEach(b => {
+                b.classList.toggle('active', b === btn);
+            });
+        });
     });
 
     // Per-Site Timeout: Cancel button

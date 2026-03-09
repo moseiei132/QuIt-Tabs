@@ -7,7 +7,8 @@ const DEFAULT_SETTINGS = {
   pauseOnMedia: true,
   focusedWindowOnly: true, // Only active tab in focused window is truly active
   historyRetentionDays: 7, // Keep history for 7 days
-  perSiteTimeouts: [] // Array of { pattern: string, timeout: number (seconds) }
+  perSiteTimeouts: [], // Array of { pattern: string, timeout: number (seconds) }
+  theme: 'system' // 'system' | 'light' | 'dark'
 };
 
 /**

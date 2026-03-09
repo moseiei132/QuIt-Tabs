@@ -26,8 +26,9 @@
   --group-orange: #fa903e;
 }
 
+/* Dark theme variables – applied when OS is dark (system) OR user forced dark */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --macos-bg: #1e1e1e;
     --macos-bg-secondary: #2a2a2a;
     --macos-bg-tertiary: #3a3a3a;
@@ -50,6 +51,56 @@
     --group-cyan: #78d9ec;
     --group-orange: #fcad70;
   }
+}
+
+/* Forced dark mode (user explicitly chose dark) */
+:root[data-theme="dark"] {
+  --macos-bg: #1e1e1e;
+  --macos-bg-secondary: #2a2a2a;
+  --macos-bg-tertiary: #3a3a3a;
+  --macos-text: #ffffff;
+  --macos-text-secondary: #98989d;
+  --macos-divider: #48484a;
+  --macos-accent: #0a84ff;
+  --macos-accent-hover: #409cff;
+  --macos-shadow: rgba(0, 0, 0, 0.3);
+  --macos-shadow-strong: rgba(0, 0, 0, 0.5);
+
+  /* Chrome Tab Group Colors (Dark Mode) */
+  --group-grey: #9aa0a6;
+  --group-blue: #8ab4f8;
+  --group-red: #f28b82;
+  --group-yellow: #fdd663;
+  --group-green: #81c995;
+  --group-pink: #ff8bcb;
+  --group-purple: #c58af9;
+  --group-cyan: #78d9ec;
+  --group-orange: #fcad70;
+}
+
+/* Forced light mode (user explicitly chose light) */
+:root[data-theme="light"] {
+  --macos-bg: #ffffff;
+  --macos-bg-secondary: #f5f5f7;
+  --macos-bg-tertiary: #e8e8ed;
+  --macos-text: #1d1d1f;
+  --macos-text-secondary: #86868b;
+  --macos-divider: #d2d2d7;
+  --macos-accent: #007aff;
+  --macos-accent-hover: #0051d5;
+  --macos-shadow: rgba(0, 0, 0, 0.1);
+  --macos-shadow-strong: rgba(0, 0, 0, 0.15);
+
+  /* Chrome Tab Group Colors */
+  --group-grey: #5f6368;
+  --group-blue: #1a73e8;
+  --group-red: #d93025;
+  --group-yellow: #f9ab00;
+  --group-green: #1e8e3e;
+  --group-pink: #d01884;
+  --group-purple: #9334e6;
+  --group-cyan: #12b5cb;
+  --group-orange: #fa903e;
 }
 
 * {
@@ -1630,6 +1681,40 @@ svg use {
 .countdown-unit {
   font-size: 12px;
   color: var(--macos-text-secondary);
+}
+
+/* Theme Picker (segmented control) */
+.theme-picker {
+  display: flex;
+  gap: 2px;
+  background: var(--macos-bg-tertiary);
+  border-radius: 7px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.theme-btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--macos-text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.theme-btn:hover {
+  color: var(--macos-text);
+}
+
+.theme-btn.active {
+  background: var(--macos-bg);
+  color: var(--macos-text);
+  box-shadow: 0 1px 3px var(--macos-shadow);
 }
 
 /* Per-Site Timeouts */

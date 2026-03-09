@@ -15,6 +15,7 @@ import {
 } from './modules/currentTab.js';
 import { updateExtensionStatus } from './modules/utils.js';
 import { setupEventListeners } from './modules/events.js';
+import { applyTheme } from './modules/settings.js';
 
 // ============================================================================
 // Initialization
@@ -32,6 +33,10 @@ async function init() {
         // Get settings and tab states from background
         const settings = await getSettings();
         setSettings(settings);
+
+        // Apply theme immediately before rendering
+        applyTheme(settings.theme || 'system');
+
         await refreshTabStates();
 
         // Load all tabs
