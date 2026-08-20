@@ -111,7 +111,7 @@ async function init() {
 
 // ⬇️  Bump this ONLY when you want to show a banner (new feature releases).
 // Leave unchanged for bug-fix releases → no banner appears.
-const WHATS_NEW_VERSION = '1.4.0';
+const WHATS_NEW_VERSION = '1.5.0';
 
 async function showWhatsNewBanner() {
     const { whatsNewDismissedVersion } = await chrome.storage.local.get('whatsNewDismissedVersion');
