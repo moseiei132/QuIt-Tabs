@@ -94,6 +94,12 @@
         <path d="M8 3v5H3M21 8h-5V3M3 16h5v5M16 21v-5h5" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round" />
       </symbol>
+      <symbol id="icon-trash" viewBox="0 0 24 24">
+        <polyline points="3 6 5 6 21 6" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
     </svg>
   </div>
 
@@ -414,6 +420,81 @@
             </svg>
             GitHub
           </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- History Panel (hidden by default) -->
+    <section id="historyPanel" class="settings-panel history-panel" style="display: none;">
+      <div class="settings-header history-header">
+        <button id="backFromHistoryBtn" class="icon-btn" title="Back to tabs">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <h2>History</h2>
+        <button id="clearHistoryBtn" class="icon-btn history-clear-btn" title="Clear all history">
+          <svg width="16" height="16">
+            <use href="#icon-trash" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="settings-content history-content">
+        <div class="history-stats" id="historyStats">
+          <div class="history-stat">
+            <span class="history-stat-value" id="historyStatToday">0</span>
+            <span class="history-stat-label">Today</span>
+          </div>
+          <div class="history-stat">
+            <span class="history-stat-value" id="historyStatWeek">0</span>
+            <span class="history-stat-label">This Week</span>
+          </div>
+          <div class="history-stat">
+            <span class="history-stat-value" id="historyStatTotal">0</span>
+            <span class="history-stat-label">Total</span>
+          </div>
+        </div>
+
+        <div class="history-reasons">
+          <div id="historyReasonBar" class="history-reason-bar"></div>
+          <div id="historyReasonLegend" class="history-reason-legend"></div>
+        </div>
+
+        <div class="history-search-bar">
+          <svg class="history-search-icon" width="14" height="14">
+            <use href="#icon-search" />
+          </svg>
+          <input type="text" id="historySearchInput" placeholder="Search history...">
+          <button id="historyClearSearch" class="clear-btn" style="display: none;">
+            <svg width="8" height="8">
+              <use href="#icon-close" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="history-filter-bar" id="historyFilterBar">
+          <button class="history-filter-btn active" data-reason="all">All</button>
+          <button class="history-filter-btn" data-reason="timeout">Timeout</button>
+          <button class="history-filter-btn" data-reason="manual">Manual</button>
+          <button class="history-filter-btn" data-reason="batch_close">Batch</button>
+        </div>
+
+        <div id="historyList" class="history-list">
+          <div class="loading">Loading history...</div>
+        </div>
+
+        <div id="historyEmptyState" class="history-empty" style="display: none;">
+          <svg width="40" height="40">
+            <use href="#icon-history" />
+          </svg>
+          <h3>No History Yet</h3>
+          <p>Closed tabs will appear here</p>
+        </div>
+
+        <div class="history-footer">
+          <span id="historyCountLabel" class="history-count-label">0 entries</span>
+          <div id="historyPagination" class="history-pagination" style="display: none;"></div>
         </div>
       </div>
     </section>

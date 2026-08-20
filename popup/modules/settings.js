@@ -37,11 +37,13 @@ export function setupSettingsPanel() {
     const settingsBtn = document.getElementById('settingsBtn');
     const backToTabsBtn = document.getElementById('backToTabsBtn');
     const settingsPanel = document.getElementById('settingsPanel');
+    const historyPanel = document.getElementById('historyPanel');
     const currentTabEl = document.querySelector('.current-tab');
     const tabsSection = document.querySelector('.tabs-section');
 
     // Open settings panel
     settingsBtn.addEventListener('click', () => {
+        if (historyPanel) historyPanel.style.display = 'none';
         currentTabEl.style.display = 'none';
         tabsSection.style.display = 'none';
         settingsPanel.style.display = 'flex';

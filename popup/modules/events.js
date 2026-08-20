@@ -19,6 +19,7 @@ import {
     mergeDuplicateTabs
 } from './batchActions.js';
 import { setupSettingsPanel } from './settings.js';
+import { setupHistoryPanel } from './history.js';
 import { isSpecialTab } from './utils.js';
 
 // ============================================================================
@@ -383,11 +384,7 @@ export function setupEventListeners() {
         await mergeDuplicateTabs();
     });
 
-    // History button
-    document.getElementById('historyBtn').addEventListener('click', () => {
-        chrome.tabs.create({ url: chrome.runtime.getURL('history/history.html') });
-    });
-
-    // Settings panel handlers
+    // History + Settings panels (in-popup)
+    setupHistoryPanel();
     setupSettingsPanel();
 }

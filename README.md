@@ -56,7 +56,8 @@ Protect tabs from auto-closing with a single click:
 - 🔄 **Quick Toggle** - Easy on/off protection in the popup
 
 ### History
-- 📜 **Closed Tabs Log** - View a history of tabs closed by the extension
+- 📜 **Closed Tabs Log** - View closed tabs in the popup History panel
+- 📊 **Close Reasons** - See % breakdown (timeout / manual / batch) at a glance
 - 🔄 **Restore Tabs** - One-click restore for any accidentally closed tab
 - 🧹 **Privacy Control** - Clear history at any time; data stays local
 
@@ -159,15 +160,11 @@ QuIt-Tabs/
 │       ├── contextMenu.js # Right-click context menus
 │       ├── tabGroups.js   # Tab group management
 │       ├── settings.js    # Settings panel & per-site timeouts
+│       ├── history.js     # In-popup closed-tabs history
 │       └── events.js      # Event listeners setup
-├── history/               # History page
-│   ├── history.html       # History UI
-│   ├── history.js         # History logic & insights
-│   └── history.css        # History styling
 ├── utils/                 # Shared utilities
 │   ├── storage.js         # Settings and state persistence
-│   ├── quit-integration.js # QuIt app URL parameter handling
-│   └── insights.js        # History analysis engine
+│   └── quit-integration.js # QuIt app URL parameter handling
 ├── lib/                   # Third-party libraries
 └── icons/                 # Extension icons
 ```
