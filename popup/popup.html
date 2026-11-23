@@ -138,15 +138,13 @@
 
     <!-- What's New Banner (shown once after update) -->
     <div id="whatsNewBanner" class="whats-new-banner" style="display:none;">
-      <div class="whats-new-content">
+      <div class="whats-new-content" id="whatsNewOpenChangelog" title="View full changelog">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <polygon
             points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
             stroke-linecap="round" stroke-linejoin="round" />
         </svg>
-        <span><strong>New!</strong> History lives in the popup — tap <svg width="11" height="11">
-            <use href="#icon-history" />
-          </svg></span>
+        <span><strong>v1.6.0</strong> Split View, Sleep mode &amp; more · <u>What's New</u></span>
       </div>
       <button id="whatsNewDismiss" class="whats-new-dismiss" title="Dismiss">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -384,6 +382,28 @@
           </label>
         </div>
 
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">Protect Shared Groups</span>
+            <span class="setting-desc">Keep tabs in Chrome Shared Tab Groups</span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="popupProtectSharedGroups">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">When Timer Ends</span>
+            <span class="setting-desc">Close tab or put to sleep (Memory Saver)</span>
+          </div>
+          <div class="theme-picker" id="timeoutActionPicker">
+            <button class="theme-btn active" data-timeout-action="close">Close</button>
+            <button class="theme-btn" data-timeout-action="discard">Sleep</button>
+          </div>
+        </div>
+
         <!-- Per-Site Timeouts Section -->
         <div class="setting-section">
           <h3 class="setting-section-title">Per-Site Timeouts</h3>
@@ -410,7 +430,11 @@
         <div class="extension-info">
           <div class="extension-version">
             <span>QuIt Tabs</span>
-            <span id="extensionVersion">v1.0.0</span>
+            <button id="openChangelogBtn" class="version-changelog-btn" title="View full changelog">
+              <span id="extensionVersion">v1.6.0</span>
+              <span class="changelog-dot">·</span>
+              <span>What's New</span>
+            </button>
           </div>
           <a href="https://github.com/moseiei132/QuIt-Tabs" target="_blank" class="github-link">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">

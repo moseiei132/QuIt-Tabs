@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What's New — QuIt Tabs</title>
+  <link rel="icon" type="image/png" href="../icons/icon32.png">
+  <link rel="stylesheet" href="changelog.css">
+</head>
+
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="hero-brand">
+        <img src="../icons/icon48.png" width="40" height="40" alt="QuIt Tabs" class="hero-logo">
+        <div>
+          <div class="hero-title-row">
+            <h1>QuIt Tabs Changelog</h1>
+            <span id="currentVersionBadge" class="version-pill latest">v1.6.0</span>
+          </div>
+          <p class="hero-subtitle">Full release history and feature updates across versions</p>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="filter-group" id="filterGroup">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="new">New</button>
+          <button class="filter-btn" data-filter="improved">Improved</button>
+          <button class="filter-btn" data-filter="fix">Fixes</button>
+        </div>
+        <div class="search-box">
+          <input type="search" id="changelogSearch" placeholder="Search updates (e.g. Split View, History)...">
+        </div>
+      </div>
+    </header>
+
+    <main id="timeline" class="timeline"></main>
+
+    <div id="emptyState" class="empty-state" style="display: none;">
+      <p>No changelog entries match your filter.</p>
+    </div>
+
+    <footer class="page-footer">
+      <span>QuIt Tabs · Automatically keep your browser clean</span>
+      <div class="footer-links">
+        <a href="https://github.com/moseiei132/QuIt-Tabs" target="_blank" rel="noopener">GitHub</a>
+        <span>·</span>
+        <a href="https://chromewebstore.google.com/detail/boahkmlnechnockgjnkgnafllkpajdjm" target="_blank" rel="noopener">Chrome Web Store</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="changelog.js" type="module"></script>
+</body>
+
+</html>

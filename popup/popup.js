@@ -67,8 +67,14 @@ async function init() {
             await refreshTabStates();
         });
         chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
-            // Only reload if title or URL changed
-            if (changeInfo.title || changeInfo.url) {
+            // Reload if title, URL, Split View, or sleep/freeze status changed
+            if (
+                changeInfo.title ||
+                changeInfo.url ||
+                changeInfo.splitViewId !== undefined ||
+                changeInfo.discarded !== undefined ||
+                changeInfo.frozen !== undefined
+            ) {
                 await loadAllTabs();
                 await refreshTabStates();
                 
@@ -94,10 +100,22 @@ async function init() {
             }
         });
 
-        // Listen for state updates from background (when rules change, etc.)
-        chrome.runtime.onMessage.addListener((message) => {
+        // Live sync when Chrome Tab Groups change (created, renamed, colored, shared, removed)
+        if (chrome.tabGroups) {
+            const refreshGroups = async () => {
+                await loadAllTabs();
+            };
+            chrome.tabGroups.onCreated?.addListener(refreshGroups);
+            chrome.tabGroups.onUpdated?.addListener(refreshGroups);
+            chrome.tabGroups.onRemoved?.addListener(refreshGroups);
+        }
+
+        // Listen for state updates from background (context menus, shortcuts, split view, rules)
+        chrome.runtime.onMessage.addListener(async (message) => {
             if (message.type === 'stateUpdated') {
-                refreshTabStates();
+                await refreshTabStates();
+                updateCurrentTab();
+                renderTabsList();
             }
         });
     } catch (error) {
@@ -111,7 +129,7 @@ async function init() {
 
 // ⬇️  Bump this ONLY when you want to show a banner (new feature releases).
 // Leave unchanged for bug-fix releases → no banner appears.
-const WHATS_NEW_VERSION = '1.5.0';
+const WHATS_NEW_VERSION = '1.6.0';
 
 async function showWhatsNewBanner() {
     const { whatsNewDismissedVersion } = await chrome.storage.local.get('whatsNewDismissedVersion');
@@ -120,18 +138,27 @@ async function showWhatsNewBanner() {
 
     const banner = document.getElementById('whatsNewBanner');
     const dismissBtn = document.getElementById('whatsNewDismiss');
+    const openChangelogEl = document.getElementById('whatsNewOpenChangelog');
     if (!banner) return;
 
     // Show banner with slide-in animation
     banner.style.display = 'flex';
     requestAnimationFrame(() => banner.classList.add('visible'));
 
-    // On dismiss: save dismissed version so banner never shows for this version again
-    dismissBtn?.addEventListener('click', async () => {
+    const dismissBanner = async () => {
         banner.classList.remove('visible');
         setTimeout(() => { banner.style.display = 'none'; }, 250);
         await chrome.storage.local.set({ whatsNewDismissedVersion: WHATS_NEW_VERSION });
+    };
+
+    // Click banner body: open full changelog in a new tab & dismiss banner
+    openChangelogEl?.addEventListener('click', async () => {
+        await dismissBanner();
+        await chrome.tabs.create({ url: chrome.runtime.getURL('changelog/changelog.html') });
     });
+
+    // On dismiss: save dismissed version so banner never shows for this version again
+    dismissBtn?.addEventListener('click', dismissBanner);
 }
 
 

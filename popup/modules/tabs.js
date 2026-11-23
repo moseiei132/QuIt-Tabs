@@ -34,7 +34,8 @@ export async function loadAllTabs() {
             groupsObj[group.id] = {
                 title: group.title || 'Untitled',
                 color: group.color,
-                collapsed: group.collapsed
+                collapsed: group.collapsed,
+                shared: Boolean(group.shared)
             };
         });
         setTabGroups(groupsObj);
@@ -48,6 +49,62 @@ export async function loadAllTabs() {
 // ============================================================================
 // Tab List Rendering
 // ============================================================================
+
+const SPLIT_VIEW_NONE = chrome.tabs?.SPLIT_VIEW_ID_NONE ?? -1;
+
+function hasSplitView(tab) {
+    return tab?.splitViewId !== undefined && tab.splitViewId !== SPLIT_VIEW_NONE;
+}
+
+function getTabStatusKey(tab) {
+    if (!settings.enabled) return 'disabled';
+    const state = tabStates[tab.id];
+    if (!state) return 'none';
+
+    const isPinnedProtected = tab.pinned && !settings.autoClosePinned;
+    const isSpecialProtected = isSpecialTab(tab) && !settings.autoCloseSpecial;
+    const isMediaProtected = state.hasMedia && settings.pauseOnMedia;
+    const isSharedGroupProtected = Boolean(
+        settings.protectSharedGroups && tab.groupId !== -1 && tabGroups[tab.groupId]?.shared
+    );
+    const isSleeping = Boolean(tab.discarded || tab.frozen);
+
+    if (state.protected) return 'protected:manual';
+    if (isSpecialProtected) return 'protected:special';
+    if (isPinnedProtected) return 'protected:pinned';
+    if (isSharedGroupProtected) return 'protected:shared';
+    if (isMediaProtected) return 'protected:media';
+    if (settings.timeoutAction === 'discard' && isSleeping) return 'sleeping';
+    if (state.lastActiveTime === null) return 'active';
+
+    const inactiveTime = Math.floor((Date.now() - state.lastActiveTime) / 1000);
+    const remaining = Math.max(0, (state.initialCountdown || state.countdown) - inactiveTime);
+    // Group countdowns within 2 seconds as identical (Split View tabs leave at the same instant)
+    return `countdown:${Math.round(remaining / 2)}`;
+}
+
+function getSplitMeta(tab, list, idx) {
+    if (!hasSplitView(tab)) return null;
+    const prevTab = idx > 0 ? list[idx - 1] : null;
+    const nextTab = idx < list.length - 1 ? list[idx + 1] : null;
+    const prevSame = Boolean(prevTab && hasSplitView(prevTab) &&
+        prevTab.windowId === tab.windowId &&
+        prevTab.splitViewId === tab.splitViewId);
+    const nextSame = Boolean(nextTab && hasSplitView(nextTab) &&
+        nextTab.windowId === tab.windowId &&
+        nextTab.splitViewId === tab.splitViewId);
+
+    let position = 'single';
+    if (prevSame && nextSame) position = 'middle';
+    else if (nextSame) position = 'start';
+    else if (prevSame) position = 'end';
+
+    return {
+        position,
+        partnerTabId: prevSame ? prevTab.id : null,
+        sameStatusAsPrev: prevSame && getTabStatusKey(tab) === getTabStatusKey(prevTab)
+    };
+}
 
 /**
  * Render the tabs list based on current filters and grouping
@@ -141,19 +198,25 @@ export function renderGroupedTabs(tabs) {
                 const groupInfo = tabGroups[section.groupId];
                 const groupTitle = groupInfo?.title || 'Unknown Group';
                 const groupColor = groupInfo?.color || 'grey';
+                const sharedBadge = groupInfo?.shared ? '<span class="badge badge-shared">Shared</span>' : '';
 
                 // Render group header as a special row
                 html += `<div class="tab-row group-header-row" data-group-id="${section.groupId}" data-color="${groupColor}">
                   <div class="tab-group-header-inline" data-color="${groupColor}">
                     <span class="group-indicator-small" style="background-color: var(--group-${groupColor});"></span>
                     <span class="group-title-small">${escapeHtml(groupTitle)}</span>
+                    ${sharedBadge}
                   </div>
                 </div>`;
 
                 // Render tabs in the group
-                html += section.tabs.map(tab => renderTabItem(tab, groupColor)).join('');
+                html += section.tabs.map((tab, idx) =>
+                    renderTabItem(tab, groupColor, getSplitMeta(tab, section.tabs, idx))
+                ).join('');
             } else {
-                html += section.tabs.map(tab => renderTabItem(tab)).join('');
+                html += section.tabs.map((tab, idx) =>
+                    renderTabItem(tab, null, getSplitMeta(tab, section.tabs, idx))
+                ).join('');
             }
         });
     });
@@ -234,9 +297,24 @@ export function renderFlatTabs(tabs) {
  * @param {string|null} groupColor - Optional group color
  * @returns {string} HTML string for the tab item
  */
-export function renderTabItem(tab, groupColor = null) {
+export function renderTabItem(tab, groupColor = null, splitMeta = null) {
+    const splitPosition = splitMeta?.position || null;
     const state = tabStates[tab.id];
     const isActive = currentTab && tab.id === currentTab.id;
+    const isSplitPartnerActive = Boolean(
+        currentTab &&
+        hasSplitView(currentTab) &&
+        hasSplitView(tab) &&
+        tab.windowId === currentTab.windowId &&
+        tab.splitViewId === currentTab.splitViewId &&
+        !isActive
+    );
+    const isSharedGroupProtected = Boolean(
+        settings.protectSharedGroups &&
+        tab.groupId !== -1 &&
+        tabGroups[tab.groupId]?.shared
+    );
+    const isSleeping = Boolean(tab.discarded || tab.frozen);
 
     let favicon = '<svg width="16" height="16" style="opacity: 0.3;"><use href="#icon-globe"/></svg>';
     if (tab.favIconUrl) {
@@ -247,26 +325,35 @@ export function renderTabItem(tab, groupColor = null) {
     let countdownLabel = '';
     let countdownClass = '';
 
-    // Show dash when extension is disabled
-    if (!settings.enabled) {
+    // Show compact Split indicator instead of repeating identical Active/Countdown on the 2nd split row
+    if (splitMeta?.sameStatusAsPrev) {
+        countdown = '<span class="split-inline-tag">Split</span>';
+        countdownLabel = '';
+        countdownClass = 'split-dedup';
+    } else if (!settings.enabled) {
         countdown = '—';
         countdownLabel = '';
         countdownClass = '';
     } else if (state) {
-        // Check if tab is protected (explicit, media, pinned, or special with setting disabled)
+        // Check if tab is protected (explicit, media, pinned, shared group, or special with setting disabled)
         const isPinnedProtected = tab.pinned && !settings.autoClosePinned;
         const isSpecialProtected = isSpecialTab(tab) && !settings.autoCloseSpecial;
         const isMediaProtected = state.hasMedia && settings.pauseOnMedia;
 
-        if (state.protected || isMediaProtected || isPinnedProtected || isSpecialProtected) {
+        if (state.protected || isMediaProtected || isPinnedProtected || isSpecialProtected || isSharedGroupProtected) {
             // Tab is protected - show shield with label (vertical stack)
             let label = 'Protected';
             if (isSpecialProtected) label = 'Special';
             else if (isPinnedProtected) label = 'Pinned';
+            else if (isSharedGroupProtected) label = 'Shared';
             else if (isMediaProtected) label = 'Media';
             countdown = '<svg width="14" height="14" class="shield-icon"><use href="#icon-shield-filled"/></svg><span>' + label + '</span>';
             countdownLabel = '';
             countdownClass = 'protected';
+        } else if (settings.timeoutAction === 'discard' && isSleeping) {
+            countdown = '<span class="time-value">Zzz</span><span>Sleep</span>';
+            countdownLabel = '';
+            countdownClass = 'sleeping';
         } else {
             // Regular countdown - time with LEFT label
             countdown = '<span class="time-value">' + formatTime(state.countdown) + '</span><span>Left</span>';
@@ -278,11 +365,12 @@ export function renderTabItem(tab, groupColor = null) {
     }
 
     const badges = [];
-    // Protected/Media status is shown via shield icon in countdown, no badge needed
     if (tab.pinned) {
         badges.push('<span class="badge badge-pinned">Pinned</span>');
     }
-    // Removed audible badge since media status is shown in countdown area
+    if (isSleeping) {
+        badges.push('<span class="badge badge-sleeping" title="Tab is sleeping / discarded">Zzz</span>');
+    }
 
     const title = tab.title || 'Untitled';
 
@@ -302,11 +390,11 @@ export function renderTabItem(tab, groupColor = null) {
 
     // Determine if this tab would be closed in quit confirm mode
     let quitTargetClass = '';
-    if (quitConfirmMode && !isActive && settings.enabled) {
+    if (quitConfirmMode && !isActive && !isSplitPartnerActive && settings.enabled) {
         const isPinnedProtected = tab.pinned && !settings.autoClosePinned;
         const isSpecialProtected = isSpecialTab(tab) && !settings.autoCloseSpecial;
         const isMediaProtected = state?.hasMedia && settings.pauseOnMedia;
-        const isProtected = state?.protected || isPinnedProtected || isSpecialProtected || isMediaProtected;
+        const isProtected = state?.protected || isPinnedProtected || isSpecialProtected || isMediaProtected || isSharedGroupProtected;
         const hasCountdown = state?.countdown !== null && state?.countdown !== undefined;
         if (!isProtected && hasCountdown) {
             quitTargetClass = 'quit-target';
@@ -315,10 +403,11 @@ export function renderTabItem(tab, groupColor = null) {
 
     // Check if tab is selected in edit mode
     const isSelected = selectedTabIds.has(tab.id);
+    const splitClasses = splitPosition ? `split-view-item split-view-${splitPosition}` : '';
 
     return `
-    <div class="tab-row">
-      <div class="tab-item ${isActive ? 'active' : ''} ${quitTargetClass} ${isSelected ? 'selected' : ''}" data-tab-id="${tab.id}" data-window-id="${tab.windowId}" data-group-id="${tab.groupId || ''}" ${groupIndicatorStyle}>
+    <div class="tab-row ${splitPosition ? `split-row-${splitPosition}` : ''}">
+      <div class="tab-item ${isActive || isSplitPartnerActive ? 'active' : ''} ${splitClasses} ${quitTargetClass} ${isSelected ? 'selected' : ''}" data-tab-id="${tab.id}" data-window-id="${tab.windowId}" data-group-id="${tab.groupId || ''}" data-split-view-id="${hasSplitView(tab) ? tab.splitViewId : ''}" data-split-partner-id="${splitMeta?.partnerTabId || ''}" ${groupIndicatorStyle}>
         <div class="tab-favicon">${favicon}</div>
         <div class="tab-details">
           <div class="tab-title">${escapeHtml(title)}</div>

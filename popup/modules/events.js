@@ -4,7 +4,7 @@
  */
 
 import {
-    currentTab, tabStates, settings, allTabs, quitConfirmMode,
+    currentTab, tabStates, settings, allTabs, tabGroups, quitConfirmMode,
     editMode, searchQuery,
     setEditMode, setSearchQuery, setQuitConfirmMode
 } from './state.js';
@@ -121,16 +121,26 @@ export function setupEventListeners() {
 
         // Second click - execute quit all
         const tabsToClose = [];
+        const splitViewNone = chrome.tabs?.SPLIT_VIEW_ID_NONE ?? -1;
+        const activeSplitId = (currentTab?.splitViewId !== undefined && currentTab.splitViewId !== splitViewNone)
+            ? currentTab.splitViewId
+            : null;
 
         for (const tab of allTabs) {
-            // Skip current active tab
-            if (tab.active && tab.windowId === currentTab?.windowId) continue;
+            // Skip current active tab and its visible Split View partner
+            if (tab.windowId === currentTab?.windowId) {
+                if (tab.active) continue;
+                if (activeSplitId !== null && tab.splitViewId === activeSplitId) continue;
+            }
 
             const state = tabStates[tab.id];
             if (!state) continue;
 
             // Skip protected tabs
             if (state.protected) continue;
+
+            // Skip tabs in Chrome Shared Tab Groups if setting enabled
+            if (settings.protectSharedGroups && tab.groupId !== -1 && tabGroups[tab.groupId]?.shared) continue;
 
             // Skip pinned tabs if setting is disabled
             if (tab.pinned && !settings.autoClosePinned) continue;

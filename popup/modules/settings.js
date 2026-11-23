@@ -55,6 +55,13 @@ export function setupSettingsPanel() {
         document.getElementById('popupAutoCloseSpecial').checked = settings.autoCloseSpecial;
         document.getElementById('popupPauseOnMedia').checked = settings.pauseOnMedia;
         document.getElementById('popupFocusedWindowOnly').checked = settings.focusedWindowOnly;
+        document.getElementById('popupProtectSharedGroups').checked = settings.protectSharedGroups ?? true;
+
+        // Sync timeout action picker
+        const currentTimeoutAction = settings.timeoutAction || 'close';
+        document.querySelectorAll('#timeoutActionPicker .theme-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.timeoutAction === currentTimeoutAction);
+        });
 
         // Sync theme picker active state
         const currentTheme = settings.theme || 'system';
@@ -126,6 +133,33 @@ export function setupSettingsPanel() {
         settings.focusedWindowOnly = e.target.checked;
         await saveSettings(settings);
         await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
+    });
+
+    // Protect Shared Tab Groups toggle
+    document.getElementById('popupProtectSharedGroups').addEventListener('change', async (e) => {
+        settings.protectSharedGroups = e.target.checked;
+        await saveSettings(settings);
+        await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
+        renderTabsList();
+    });
+
+    // Timeout action picker (Close vs Sleep/Discard)
+    document.querySelectorAll('#timeoutActionPicker .theme-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const action = btn.dataset.timeoutAction;
+            settings.timeoutAction = action;
+            await saveSettings(settings);
+            await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
+            document.querySelectorAll('#timeoutActionPicker .theme-btn').forEach(b => {
+                b.classList.toggle('active', b === btn);
+            });
+            renderTabsList();
+        });
+    });
+
+    // Open Full Changelog in a new tab
+    document.getElementById('openChangelogBtn')?.addEventListener('click', async () => {
+        await chrome.tabs.create({ url: chrome.runtime.getURL('changelog/changelog.html') });
     });
 
     // Per-Site Timeout: Add button

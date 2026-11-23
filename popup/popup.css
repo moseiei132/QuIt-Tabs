@@ -2310,3 +2310,138 @@ svg use {
   min-width: 40px;
   text-align: center;
 }
+
+
+/* ============================================================================
+ * v1.6.0 — Split View, Shared Groups, Sleeping Tabs, Changelog Link & Submenus
+ * ============================================================================ */
+
+/* Clickable What's New Banner content */
+.whats-new-content {
+  cursor: pointer;
+}
+
+.whats-new-content:hover {
+  opacity: 0.9;
+}
+
+/* Split View visual pairing */
+.tab-row.split-row-start {
+  margin-bottom: 0;
+}
+
+.tab-row.split-row-end {
+  margin-top: 0;
+}
+
+.tab-item.split-view-start {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: 1px dashed var(--macos-divider);
+  box-shadow: inset 2px 0 0 var(--macos-accent);
+}
+
+.tab-item.split-view-middle {
+  border-radius: 0;
+  border-bottom: 1px dashed var(--macos-divider);
+  box-shadow: inset 2px 0 0 var(--macos-accent);
+}
+
+.tab-item.split-view-end {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  box-shadow: inset 2px 0 0 var(--macos-accent);
+}
+
+.tab-item.split-view-single {
+  box-shadow: inset 2px 0 0 var(--macos-accent);
+}
+
+/* Badges for Split View, Shared Groups, and Sleeping Tabs */
+.countdown.split-dedup .countdown-time {
+  align-items: center;
+  justify-content: center;
+}
+
+.split-inline-tag {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 122, 255, 0.14);
+  color: var(--macos-accent);
+}
+
+.tab-item.active .split-inline-tag {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.tab-item.active.split-view-start,
+.tab-item.active.split-view-middle {
+  border-bottom-color: rgba(255, 255, 255, 0.28);
+}
+
+.tab-item.active .badge-sleeping,
+.tab-item.active .badge-pinned {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.badge-shared {
+  background: rgba(147, 52, 230, 0.14);
+  color: var(--group-purple);
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 6px;
+}
+
+.badge-sleeping {
+  background: var(--macos-bg-tertiary);
+  color: var(--macos-text-secondary);
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.countdown.sleeping {
+  color: var(--macos-text-secondary);
+  opacity: 0.85;
+}
+
+/* Version / What's New button in Settings Extension Info */
+.version-changelog-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--macos-bg-tertiary);
+  color: var(--macos-accent);
+  border: none;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.version-changelog-btn:hover {
+  background: rgba(0, 122, 255, 0.14);
+}
+
+.version-changelog-btn .changelog-dot {
+  opacity: 0.5;
+}
+
+/* Flip context menu submenus to the left when near viewport edge / Side Panel */
+.context-menu.submenu-left .context-submenu {
+  left: auto;
+  right: 100%;
+  margin-left: 0;
+  margin-right: 4px;
+}

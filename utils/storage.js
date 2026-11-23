@@ -6,6 +6,8 @@ const DEFAULT_SETTINGS = {
   autoCloseSpecial: true, // Special tabs: extensions, new tab, chrome:// pages
   pauseOnMedia: true,
   focusedWindowOnly: true, // Only active tab in focused window is truly active
+  protectSharedGroups: true, // Auto-protect tabs inside Chrome Shared Tab Groups
+  timeoutAction: 'close', // 'close' | 'discard' (Sleep tab via Memory Saver)
   historyRetentionDays: 7, // Keep history for 7 days
   perSiteTimeouts: [], // Array of { pattern: string, timeout: number (seconds) }
   theme: 'system' // 'system' | 'light' | 'dark'
@@ -63,6 +65,43 @@ export async function saveTabStates(tabStates) {
     await chrome.storage.local.set({ tabStates });
   } catch (error) {
     console.error('Error saving tab states:', error);
+  }
+}
+
+/**
+ * Get MV3 service worker session state (survives worker suspension)
+ * @returns {Promise<{ activeTabsByWindow: Object, focusedWindowId: number|null }>}
+ */
+export async function getSessionState() {
+  try {
+    if (!chrome.storage?.session) {
+      return { activeTabsByWindow: {}, focusedWindowId: null };
+    }
+    const result = await chrome.storage.session.get(['activeTabsByWindow', 'focusedWindowId']);
+    return {
+      activeTabsByWindow: result.activeTabsByWindow || {},
+      focusedWindowId: result.focusedWindowId ?? null
+    };
+  } catch (error) {
+    console.error('Error loading session state:', error);
+    return { activeTabsByWindow: {}, focusedWindowId: null };
+  }
+}
+
+/**
+ * Save MV3 service worker session state
+ * @param {{ activeTabsByWindow: Object, focusedWindowId: number|null }} state
+ * @returns {Promise<void>}
+ */
+export async function saveSessionState(state) {
+  try {
+    if (!chrome.storage?.session) return;
+    await chrome.storage.session.set({
+      activeTabsByWindow: state.activeTabsByWindow || {},
+      focusedWindowId: state.focusedWindowId ?? null
+    });
+  } catch (error) {
+    console.error('Error saving session state:', error);
   }
 }
 

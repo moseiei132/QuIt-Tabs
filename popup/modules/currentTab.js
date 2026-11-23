@@ -4,7 +4,7 @@
  */
 
 import {
-    currentTab, tabStates, settings, allTabs,
+    currentTab, tabStates, settings, allTabs, tabGroups,
     setTabStates
 } from './state.js';
 import { formatTime, isSpecialTab } from './utils.js';
@@ -205,8 +205,11 @@ export function updateCountdowns() {
     if (!settings.enabled) return;
 
     // Update tab list countdowns
+    const statusByTabId = new Map();
+
     document.querySelectorAll('.tab-item').forEach(item => {
         const tabId = parseInt(item.dataset.tabId);
+        const partnerTabId = item.dataset.splitPartnerId ? parseInt(item.dataset.splitPartnerId) : null;
         const state = tabStates[tabId];
         const countdownEl = item.querySelector('.countdown');
         const timeEl = countdownEl.querySelector('.countdown-time');
@@ -214,19 +217,52 @@ export function updateCountdowns() {
 
         if (!state || state.countdown === null) return;
 
-        // Check if tab is protected (explicit, media, pinned, or special with setting disabled)
+        // Check if tab is protected (explicit, media, pinned, shared group, or special with setting disabled)
         const isPinnedProtected = tab && tab.pinned && !settings.autoClosePinned;
         const isSpecialProtected = tab && isSpecialTab(tab) && !settings.autoCloseSpecial;
         const isMediaProtected = state.hasMedia && settings.pauseOnMedia;
+        const isSharedGroupProtected = Boolean(
+            tab && settings.protectSharedGroups && tab.groupId !== -1 && tabGroups[tab.groupId]?.shared
+        );
+        const isSleeping = Boolean(tab && (tab.discarded || tab.frozen));
 
-        if (state.protected || isMediaProtected || isPinnedProtected || isSpecialProtected) {
+        // Compute status key to avoid duplicating identical Active/Countdown on 2nd Split View row
+        let statusKey;
+        if (state.protected) statusKey = 'protected:manual';
+        else if (isSpecialProtected) statusKey = 'protected:special';
+        else if (isPinnedProtected) statusKey = 'protected:pinned';
+        else if (isSharedGroupProtected) statusKey = 'protected:shared';
+        else if (isMediaProtected) statusKey = 'protected:media';
+        else if (settings.timeoutAction === 'discard' && isSleeping) statusKey = 'sleeping';
+        else if (state.lastActiveTime === null) statusKey = 'active';
+        else {
+            const inactiveTime = Math.floor((Date.now() - state.lastActiveTime) / 1000);
+            const rem = Math.max(0, (state.initialCountdown || state.countdown) - inactiveTime);
+            statusKey = `countdown:${Math.round(rem / 2)}`;
+        }
+        statusByTabId.set(tabId, statusKey);
+
+        if (partnerTabId && statusByTabId.get(partnerTabId) === statusKey) {
+            timeEl.innerHTML = '<span class="split-inline-tag">Split</span>';
+            countdownEl.className = 'countdown split-dedup';
+            return;
+        }
+
+        if (state.protected || isMediaProtected || isPinnedProtected || isSpecialProtected || isSharedGroupProtected) {
             // Protected - show shield icon with label
             let label = 'Protected';
             if (isSpecialProtected) label = 'Special';
             else if (isPinnedProtected) label = 'Pinned';
+            else if (isSharedGroupProtected) label = 'Shared';
             else if (isMediaProtected) label = 'Media';
             timeEl.innerHTML = '<svg width="14" height="14" class="shield-icon"><use href="#icon-shield-filled"/></svg><span>' + label + '</span>';
             countdownEl.className = 'countdown protected';
+            return;
+        }
+
+        if (settings.timeoutAction === 'discard' && isSleeping) {
+            timeEl.innerHTML = '<span class="time-value">Zzz</span><span>Sleep</span>';
+            countdownEl.className = 'countdown sleeping';
             return;
         }
 

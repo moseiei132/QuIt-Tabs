@@ -4,7 +4,7 @@
  */
 
 import {
-    allTabs, tabGroups, contextMenuState,
+    allTabs, tabGroups, currentTab, contextMenuState,
     setContextMenuState
 } from './state.js';
 import { escapeHtml } from './utils.js';
@@ -51,10 +51,28 @@ export function showContextMenu(x, y, type, targetId, event) {
         menuItems.innerHTML = buildWindowContextMenu(targetId);
     }
 
-    // Position menu
+    // Position menu and clamp inside viewport (supports Side Panel layout)
     menu.style.left = `${x}px`;
     menu.style.top = `${y}px`;
     menu.style.display = 'block';
+
+    const rect = menu.getBoundingClientRect();
+    const pad = 8;
+    const clampedLeft = Math.max(pad, Math.min(x, window.innerWidth - rect.width - pad));
+    const clampedTop = Math.max(pad, Math.min(y, window.innerHeight - rect.height - pad));
+    menu.style.left = `${clampedLeft}px`;
+    menu.style.top = `${clampedTop}px`;
+
+    // Flip submenus to the left if close to the right edge (or right-aligned Side Panel)
+    const flipLeft = (clampedLeft + rect.width + 160) > window.innerWidth;
+    menu.classList.toggle('submenu-left', flipLeft);
+    if (chrome.sidePanel?.getLayout) {
+        chrome.sidePanel.getLayout().then((layout) => {
+            if (layout?.side === 'right' && (clampedLeft + rect.width + 150) > window.innerWidth) {
+                menu.classList.add('submenu-left');
+            }
+        }).catch(() => {});
+    }
 
     // Add click handlers
     attachContextMenuHandlers();
@@ -105,7 +123,27 @@ export function buildTabContextMenu(tab) {
             </div>
         `).join('');
 
+    const splitViewNone = chrome.tabs?.SPLIT_VIEW_ID_NONE ?? -1;
+    const inSplitView = tab.splitViewId !== undefined && tab.splitViewId !== splitViewNone;
+    const canUnsplit = inSplitView && typeof chrome.tabs?.unsplit === 'function';
+    const canSplitWithCurrent = !inSplitView &&
+        typeof chrome.tabs?.createSplit === 'function' &&
+        currentTab &&
+        currentTab.id !== tab.id &&
+        currentTab.windowId === tab.windowId;
+
     return `
+        ${canUnsplit ? `
+            <div class="context-menu-item" data-action="unsplitTab">
+                Unsplit Tab
+            </div>
+            <div class="context-menu-divider"></div>
+        ` : canSplitWithCurrent ? `
+            <div class="context-menu-item" data-action="splitWithCurrent">
+                Split with Current Tab
+            </div>
+            <div class="context-menu-divider"></div>
+        ` : ''}
         ${tab.groupId && tab.groupId !== -1 ? `
             <div class="context-menu-item" data-action="removeFromGroup">
                 Remove from Group
@@ -283,6 +321,16 @@ export function attachContextMenuHandlers() {
                     break;
                 case 'togglePin':
                     await togglePinTab(contextMenuState.targetTabId);
+                    break;
+                case 'splitWithCurrent':
+                    if (currentTab && typeof chrome.tabs?.createSplit === 'function') {
+                        await chrome.tabs.createSplit([currentTab.id, contextMenuState.targetTabId]);
+                    }
+                    break;
+                case 'unsplitTab':
+                    if (typeof chrome.tabs?.unsplit === 'function') {
+                        await chrome.tabs.unsplit(contextMenuState.targetTabId);
+                    }
                     break;
 
                 // Group actions
