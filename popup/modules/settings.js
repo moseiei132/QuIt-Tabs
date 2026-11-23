@@ -57,11 +57,19 @@ export function setupSettingsPanel() {
         document.getElementById('popupFocusedWindowOnly').checked = settings.focusedWindowOnly;
         document.getElementById('popupProtectSharedGroups').checked = settings.protectSharedGroups ?? true;
 
-        // Sync timeout action picker
+        // Sync timeout action picker & 2-step follow-up input
         const currentTimeoutAction = settings.timeoutAction || 'close';
         document.querySelectorAll('#timeoutActionPicker .theme-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.timeoutAction === currentTimeoutAction);
         });
+        const closeAfterRow = document.getElementById('closeAfterDiscardRow');
+        const closeAfterInput = document.getElementById('popupCloseAfterDiscardInput');
+        if (closeAfterRow) {
+            closeAfterRow.style.display = currentTimeoutAction === 'discard_then_close' ? '' : 'none';
+        }
+        if (closeAfterInput) {
+            closeAfterInput.value = Math.max(1, Math.round((settings.closeAfterDiscard ?? 1800) / 60));
+        }
 
         // Sync theme picker active state
         const currentTheme = settings.theme || 'system';
@@ -143,7 +151,7 @@ export function setupSettingsPanel() {
         renderTabsList();
     });
 
-    // Timeout action picker (Close vs Sleep/Discard)
+    // Timeout action picker (Close vs Sleep vs 2-Step Sleep -> Close)
     document.querySelectorAll('#timeoutActionPicker .theme-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
             const action = btn.dataset.timeoutAction;
@@ -153,9 +161,29 @@ export function setupSettingsPanel() {
             document.querySelectorAll('#timeoutActionPicker .theme-btn').forEach(b => {
                 b.classList.toggle('active', b === btn);
             });
+            const closeAfterRow = document.getElementById('closeAfterDiscardRow');
+            if (closeAfterRow) {
+                closeAfterRow.style.display = action === 'discard_then_close' ? '' : 'none';
+            }
             renderTabsList();
         });
     });
+
+    // Close After Sleep input (2-Step mode)
+    const closeAfterDiscardInput = document.getElementById('popupCloseAfterDiscardInput');
+    if (closeAfterDiscardInput) {
+        closeAfterDiscardInput.addEventListener('change', async (e) => {
+            let value = parseInt(e.target.value);
+            if (isNaN(value) || value < 1) value = 1;
+            if (value > 1440) value = 1440;
+            e.target.value = value;
+
+            settings.closeAfterDiscard = value * 60;
+            await saveSettings(settings);
+            await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
+            renderTabsList();
+        });
+    }
 
     // Open Full Changelog in a new tab
     document.getElementById('openChangelogBtn')?.addEventListener('click', async () => {
@@ -186,36 +214,95 @@ export function setupSettingsPanel() {
         hidePerSiteTimeoutDialog();
     });
 
-    // Per-Site Timeout: Save button
+    // Per-Site Rule: Save button
     document.getElementById('savePerSiteTimeout').addEventListener('click', async () => {
         await savePerSiteTimeoutRule();
     });
 
-    // Load per-site timeouts
+    // Per-Site Rule: Timeout mode picker (Global vs Custom)
+    document.querySelectorAll('#siteTimeoutModePicker .theme-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setSiteTimeoutMode(btn.dataset.siteTimeoutMode);
+        });
+    });
+
+    // Per-Site Rule: Action mode picker (Global vs Close vs Sleep vs 2-Step)
+    document.querySelectorAll('#siteActionModePicker .theme-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setSiteActionMode(btn.dataset.siteActionMode);
+        });
+    });
+
+    // Load per-site rules
     renderPerSiteTimeouts();
 }
 
 // ============================================================================
-// Per-Site Timeout Management
+// Per-Site Rule Management
 // ============================================================================
 
+let editingSitePattern = null;
+let selectedSiteTimeoutMode = 'global';
+let selectedSiteActionMode = 'global';
+
+function setSiteTimeoutMode(mode) {
+    selectedSiteTimeoutMode = mode;
+    document.querySelectorAll('#siteTimeoutModePicker .theme-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.siteTimeoutMode === mode);
+    });
+    const customGroup = document.getElementById('siteCustomTimeoutGroup');
+    if (customGroup) {
+        customGroup.style.display = mode === 'custom' ? '' : 'none';
+    }
+}
+
+function setSiteActionMode(mode) {
+    selectedSiteActionMode = mode;
+    document.querySelectorAll('#siteActionModePicker .theme-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.siteActionMode === mode);
+    });
+    const closeAfterGroup = document.getElementById('siteCloseAfterDiscardGroup');
+    if (closeAfterGroup) {
+        closeAfterGroup.style.display = mode === 'discard_then_close' ? '' : 'none';
+    }
+}
+
+function formatRuleSummary(rule) {
+    const timeoutMode = rule.timeoutMode || 'custom';
+    const actionMode = rule.actionMode || 'global';
+
+    const timeoutPart = timeoutMode === 'global'
+        ? 'Global timer'
+        : `${Math.max(1, Math.round((rule.timeout || 1800) / 60))} min`;
+
+    let actionPart = 'Global action';
+    if (actionMode === 'close') actionPart = 'Close';
+    else if (actionMode === 'discard') actionPart = 'Sleep';
+    else if (actionMode === 'discard_then_close') {
+        const afterMin = Math.max(1, Math.round((rule.closeAfterDiscard ?? settings.closeAfterDiscard ?? 1800) / 60));
+        actionPart = `2-Step (+${afterMin}m)`;
+    }
+
+    return `${timeoutPart} · ${actionPart}`;
+}
+
 /**
- * Render per-site timeout rules
+ * Render per-site rules
  */
 export async function renderPerSiteTimeouts() {
     const listEl = document.getElementById('perSiteTimeoutsList');
     const rules = settings.perSiteTimeouts || [];
 
     if (rules.length === 0) {
-        listEl.innerHTML = '<div class="empty-message">No site-specific timeouts set</div>';
+        listEl.innerHTML = '<div class="empty-message">No site-specific rules set</div>';
         return;
     }
 
     listEl.innerHTML = rules.map(rule => `
-        <div class="per-site-rule">
+        <div class="per-site-rule" data-edit-pattern="${escapeHtml(rule.pattern)}" title="Click to edit rule">
             <div class="per-site-info">
                 <div class="per-site-pattern">${escapeHtml(rule.pattern)}</div>
-                <div class="per-site-timeout">${Math.floor(rule.timeout / 60)} minutes</div>
+                <div class="per-site-timeout">${escapeHtml(formatRuleSummary(rule))}</div>
             </div>
             <button class="btn-icon" data-pattern="${escapeHtml(rule.pattern)}" title="Remove rule">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -225,9 +312,22 @@ export async function renderPerSiteTimeouts() {
         </div>
     `).join('');
 
+    // Click row to edit
+    listEl.querySelectorAll('.per-site-rule').forEach(row => {
+        row.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-icon')) return;
+            const pattern = row.dataset.editPattern;
+            const existingRule = (settings.perSiteTimeouts || []).find(r => r.pattern === pattern);
+            if (existingRule) {
+                showPerSiteTimeoutDialog(existingRule);
+            }
+        });
+    });
+
     // Attach delete handlers
     listEl.querySelectorAll('.btn-icon').forEach(btn => {
-        btn.addEventListener('click', async () => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
             const pattern = btn.dataset.pattern;
             await removePerSiteTimeoutRule(pattern);
         });
@@ -235,73 +335,113 @@ export async function renderPerSiteTimeouts() {
 }
 
 /**
- * Show per-site timeout dialog
+ * Show per-site rule dialog (for adding a new rule or editing an existing one)
+ * @param {Object|null} existingRule
  */
-export function showPerSiteTimeoutDialog() {
+export function showPerSiteTimeoutDialog(existingRule = null) {
     const dialog = document.getElementById('perSiteTimeoutDialog');
+    const titleEl = document.getElementById('siteRuleDialogTitle');
     const patternInput = document.getElementById('sitePattern');
     const timeoutInput = document.getElementById('siteTimeout');
+    const closeAfterInput = document.getElementById('siteCloseAfterDiscard');
 
-    // Pre-fill with current tab's domain if available
-    if (currentTab && currentTab.url) {
-        try {
-            const url = new URL(currentTab.url);
-            patternInput.value = url.hostname;
-        } catch {
+    if (existingRule) {
+        editingSitePattern = existingRule.pattern;
+        if (titleEl) titleEl.textContent = 'Edit Site Rule';
+        patternInput.value = existingRule.pattern;
+        const timeoutMode = existingRule.timeoutMode || 'custom';
+        const actionMode = existingRule.actionMode || 'global';
+        setSiteTimeoutMode(timeoutMode);
+        setSiteActionMode(actionMode);
+        timeoutInput.value = Math.max(1, Math.round((existingRule.timeout || settings.globalCountdown || 1800) / 60));
+        closeAfterInput.value = Math.max(1, Math.round((existingRule.closeAfterDiscard ?? settings.closeAfterDiscard ?? 1800) / 60));
+    } else {
+        editingSitePattern = null;
+        if (titleEl) titleEl.textContent = 'Add Site Rule';
+
+        // Pre-fill with current tab's domain if available
+        if (currentTab && currentTab.url) {
+            try {
+                const url = new URL(currentTab.url);
+                patternInput.value = url.hostname;
+            } catch {
+                patternInput.value = '';
+            }
+        } else {
             patternInput.value = '';
         }
-    } else {
-        patternInput.value = '';
+
+        setSiteTimeoutMode('global');
+        setSiteActionMode('global');
+        timeoutInput.value = Math.max(1, Math.round((settings.globalCountdown || 1800) / 60));
+        closeAfterInput.value = Math.max(1, Math.round((settings.closeAfterDiscard ?? 1800) / 60));
     }
 
-    timeoutInput.value = 30; // Default 30 minutes
     dialog.style.display = 'flex';
     patternInput.focus();
 }
 
 /**
- * Hide per-site timeout dialog
+ * Hide per-site rule dialog
  */
 export function hidePerSiteTimeoutDialog() {
     const dialog = document.getElementById('perSiteTimeoutDialog');
     dialog.style.display = 'none';
+    editingSitePattern = null;
 }
 
 /**
- * Save per-site timeout rule
+ * Save per-site rule
  */
 export async function savePerSiteTimeoutRule() {
     const pattern = document.getElementById('sitePattern').value.trim();
-    const minutes = parseInt(document.getElementById('siteTimeout').value);
 
     if (!pattern) {
         alert('Please enter a domain pattern');
         return;
     }
 
-    if (!minutes || minutes < 1 || minutes > 1440) {
-        alert('Please enter a valid timeout between 1-1440 minutes');
-        return;
+    const rule = {
+        pattern,
+        timeoutMode: selectedSiteTimeoutMode,
+        actionMode: selectedSiteActionMode
+    };
+
+    if (selectedSiteTimeoutMode === 'custom') {
+        const minutes = parseInt(document.getElementById('siteTimeout').value);
+        if (!minutes || minutes < 1 || minutes > 1440) {
+            alert('Please enter a valid timeout between 1-1440 minutes');
+            return;
+        }
+        rule.timeout = minutes * 60;
     }
 
-    const timeout = minutes * 60; // Convert to seconds
+    if (selectedSiteActionMode === 'discard_then_close') {
+        const closeAfterMinutes = parseInt(document.getElementById('siteCloseAfterDiscard').value);
+        if (!closeAfterMinutes || closeAfterMinutes < 1 || closeAfterMinutes > 1440) {
+            alert('Please enter a valid "Close After Sleep" duration between 1-1440 minutes');
+            return;
+        }
+        rule.closeAfterDiscard = closeAfterMinutes * 60;
+    }
 
-    // Add rule to settings
     if (!settings.perSiteTimeouts) {
         settings.perSiteTimeouts = [];
     }
 
-    // Remove existing rule for this pattern
-    settings.perSiteTimeouts = settings.perSiteTimeouts.filter(r => r.pattern !== pattern);
+    // Remove previous entry if editing or overwriting same pattern
+    settings.perSiteTimeouts = settings.perSiteTimeouts.filter(
+        r => r.pattern !== pattern && r.pattern !== editingSitePattern
+    );
 
-    // Add new rule
-    settings.perSiteTimeouts.push({ pattern, timeout });
+    settings.perSiteTimeouts.push(rule);
 
     await saveSettings(settings);
     await chrome.runtime.sendMessage({ type: 'settingsUpdated' });
 
     hidePerSiteTimeoutDialog();
     renderPerSiteTimeouts();
+    renderTabsList();
 }
 
 /**

@@ -7,7 +7,8 @@ const DEFAULT_SETTINGS = {
   pauseOnMedia: true,
   focusedWindowOnly: true, // Only active tab in focused window is truly active
   protectSharedGroups: true, // Auto-protect tabs inside Chrome Shared Tab Groups
-  timeoutAction: 'close', // 'close' | 'discard' (Sleep tab via Memory Saver)
+  timeoutAction: 'close', // 'close' | 'discard' | 'discard_then_close'
+  closeAfterDiscard: 1800, // 30 minutes in seconds (used in 2-step Sleep -> Close mode)
   historyRetentionDays: 7, // Keep history for 7 days
   perSiteTimeouts: [], // Array of { pattern: string, timeout: number (seconds) }
   theme: 'system' // 'system' | 'light' | 'dark'
@@ -186,6 +187,58 @@ export async function clearHistory() {
 }
 
 /**
+ * Resolve effective timeout & action rule for a specific URL.
+ * Backward-compatible with legacy rules `{ pattern, timeout }`.
+ * @param {string} url
+ * @param {Object} settings
+ * @returns {Promise<{ timeout: number, timeoutAction: string, closeAfterDiscard: number }>}
+ */
+export async function getRuleForUrl(url, settings = null) {
+  const effectiveSettings = settings || await getSettings();
+  const fallback = {
+    timeout: effectiveSettings.globalCountdown ?? DEFAULT_SETTINGS.globalCountdown,
+    timeoutAction: effectiveSettings.timeoutAction || DEFAULT_SETTINGS.timeoutAction,
+    closeAfterDiscard: effectiveSettings.closeAfterDiscard ?? DEFAULT_SETTINGS.closeAfterDiscard
+  };
+
+  try {
+    let domain;
+    try {
+      domain = new URL(url).hostname;
+    } catch {
+      return fallback;
+    }
+
+    for (const rule of effectiveSettings.perSiteTimeouts || []) {
+      if (matchesPattern(domain, rule.pattern)) {
+        // Legacy rules had no timeoutMode -> treat as 'custom'
+        const timeoutMode = rule.timeoutMode || 'custom';
+        const actionMode = rule.actionMode || 'global';
+
+        const timeout = timeoutMode === 'global'
+          ? fallback.timeout
+          : (rule.timeout ?? fallback.timeout);
+
+        const timeoutAction = actionMode === 'global'
+          ? fallback.timeoutAction
+          : actionMode;
+
+        const closeAfterDiscard = actionMode === 'discard_then_close'
+          ? (rule.closeAfterDiscard ?? fallback.closeAfterDiscard)
+          : fallback.closeAfterDiscard;
+
+        return { timeout, timeoutAction, closeAfterDiscard };
+      }
+    }
+
+    return fallback;
+  } catch (error) {
+    console.error('Error resolving rule for URL:', error);
+    return fallback;
+  }
+}
+
+/**
  * Get the timeout value for a specific URL
  * Checks perSiteTimeouts and returns the first matching rule's timeout,
  * or returns the global countdown if no match found
@@ -194,33 +247,8 @@ export async function clearHistory() {
  * @returns {Promise<number>} Timeout in seconds
  */
 export async function getTimeoutForUrl(url, settings = null) {
-  try {
-    if (!settings) {
-      settings = await getSettings();
-    }
-
-    // Extract domain from URL
-    let domain;
-    try {
-      const urlObj = new URL(url);
-      domain = urlObj.hostname;
-    } catch {
-      return settings.globalCountdown;
-    }
-
-    // Check if URL matches any per-site timeout pattern
-    for (const rule of settings.perSiteTimeouts || []) {
-      if (matchesPattern(domain, rule.pattern)) {
-        return rule.timeout;
-      }
-    }
-
-    // No match, return global countdown
-    return settings.globalCountdown;
-  } catch (error) {
-    console.error('Error getting timeout for URL:', error);
-    return settings?.globalCountdown || DEFAULT_SETTINGS.globalCountdown;
-  }
+  const rule = await getRuleForUrl(url, settings);
+  return rule.timeout;
 }
 
 /**

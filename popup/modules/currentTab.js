@@ -226,6 +226,9 @@ export function updateCountdowns() {
         );
         const isSleeping = Boolean(tab && (tab.discarded || tab.frozen));
 
+        const tabTimeoutAction = state.timeoutAction || settings.timeoutAction || 'close';
+        const tabCloseAfterDiscard = state.closeAfterDiscard ?? settings.closeAfterDiscard ?? 1800;
+
         // Compute status key to avoid duplicating identical Active/Countdown on 2nd Split View row
         let statusKey;
         if (state.protected) statusKey = 'protected:manual';
@@ -233,12 +236,12 @@ export function updateCountdowns() {
         else if (isPinnedProtected) statusKey = 'protected:pinned';
         else if (isSharedGroupProtected) statusKey = 'protected:shared';
         else if (isMediaProtected) statusKey = 'protected:media';
-        else if (settings.timeoutAction === 'discard' && isSleeping) statusKey = 'sleeping';
+        else if (tabTimeoutAction === 'discard' && isSleeping) statusKey = 'sleeping';
         else if (state.lastActiveTime === null) statusKey = 'active';
         else {
             const inactiveTime = Math.floor((Date.now() - state.lastActiveTime) / 1000);
             const rem = Math.max(0, (state.initialCountdown || state.countdown) - inactiveTime);
-            statusKey = `countdown:${Math.round(rem / 2)}`;
+            statusKey = `countdown:${tabTimeoutAction}:${Math.round(rem / 2)}`;
         }
         statusByTabId.set(tabId, statusKey);
 
@@ -260,7 +263,7 @@ export function updateCountdowns() {
             return;
         }
 
-        if (settings.timeoutAction === 'discard' && isSleeping) {
+        if (tabTimeoutAction === 'discard' && isSleeping) {
             timeEl.innerHTML = '<span class="time-value">Zzz</span><span>Sleep</span>';
             countdownEl.className = 'countdown sleeping';
             return;
@@ -268,18 +271,26 @@ export function updateCountdowns() {
 
         // Calculate current countdown based on background's tracking
         let remaining;
+        let actionLabel = 'Left';
         if (state.lastActiveTime === null) {
             // Tab is active - show eye icon with Active text (vertical stack)
             timeEl.innerHTML = '<svg width="14" height="14" class="active-icon"><use href="#icon-eye"/></svg><span>Active</span>';
             countdownEl.className = 'countdown active';
             return;
+        } else if (tabTimeoutAction === 'discard_then_close' && (state.discardedAt || isSleeping)) {
+            const sleepElapsed = state.discardedAt ? Math.floor((Date.now() - state.discardedAt) / 1000) : 0;
+            remaining = Math.max(0, tabCloseAfterDiscard - sleepElapsed);
+            actionLabel = 'Close';
         } else {
             // Tab is inactive - calculate elapsed time
             const inactiveTime = Math.floor((Date.now() - state.lastActiveTime) / 1000);
             remaining = Math.max(0, (state.initialCountdown || state.countdown) - inactiveTime);
+            if (tabTimeoutAction === 'discard' || tabTimeoutAction === 'discard_then_close') {
+                actionLabel = 'Sleep';
+            }
         }
 
-        timeEl.innerHTML = '<span class="time-value">' + formatTime(remaining) + '</span><span>Left</span>';
+        timeEl.innerHTML = '<span class="time-value">' + formatTime(remaining) + '</span><span>' + actionLabel + '</span>';
 
         // Update color
         countdownEl.className = 'countdown';

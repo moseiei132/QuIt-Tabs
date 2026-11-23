@@ -130,7 +130,8 @@ export function buildTabContextMenu(tab) {
         typeof chrome.tabs?.createSplit === 'function' &&
         currentTab &&
         currentTab.id !== tab.id &&
-        currentTab.windowId === tab.windowId;
+        currentTab.windowId === tab.windowId &&
+        Boolean(currentTab.pinned) === Boolean(tab.pinned);
 
     return `
         ${canUnsplit ? `
@@ -324,7 +325,7 @@ export function attachContextMenuHandlers() {
                     break;
                 case 'splitWithCurrent':
                     if (currentTab && typeof chrome.tabs?.createSplit === 'function') {
-                        await chrome.tabs.createSplit([currentTab.id, contextMenuState.targetTabId]);
+                        await splitTabWithCurrent(currentTab.id, contextMenuState.targetTabId);
                     }
                     break;
                 case 'unsplitTab':
@@ -374,6 +375,41 @@ export function attachContextMenuHandlers() {
 // ============================================================================
 // Context Menu Action Helpers
 // ============================================================================
+
+/**
+ * Pair a target tab into Split View alongside the current tab.
+ * Chrome requires the two tabs to be adjacent (and in matching group state).
+ * @param {number} currentTabId
+ * @param {number} targetTabId
+ */
+async function splitTabWithCurrent(currentTabId, targetTabId) {
+    try {
+        let cur = await chrome.tabs.get(currentTabId);
+        let target = await chrome.tabs.get(targetTabId);
+
+        // Align tab group membership so Chrome allows them to be adjacent & split
+        const noneGroup = chrome.tabGroups?.TAB_GROUP_ID_NONE ?? -1;
+        if (cur.groupId !== target.groupId) {
+            if (cur.groupId !== noneGroup && cur.groupId !== -1) {
+                await chrome.tabs.group({ tabIds: [target.id], groupId: cur.groupId });
+            } else if (target.groupId !== noneGroup && target.groupId !== -1) {
+                await chrome.tabs.ungroup([target.id]);
+            }
+            cur = await chrome.tabs.get(currentTabId);
+            target = await chrome.tabs.get(targetTabId);
+        }
+
+        // Move target tab right next to current tab if not already adjacent
+        if (Math.abs(cur.index - target.index) !== 1) {
+            const targetIndex = target.index < cur.index ? cur.index : cur.index + 1;
+            await chrome.tabs.move(target.id, { windowId: cur.windowId, index: targetIndex });
+        }
+
+        await chrome.tabs.createSplit([currentTabId, targetTabId]);
+    } catch (error) {
+        console.error('Error creating split view:', error);
+    }
+}
 
 /**
  * Create a new group with a single tab

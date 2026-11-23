@@ -396,20 +396,32 @@
         <div class="setting-row">
           <div class="setting-info">
             <span class="setting-label">When Timer Ends</span>
-            <span class="setting-desc">Close tab or put to sleep (Memory Saver)</span>
+            <span class="setting-desc">Close, Sleep, or Sleep then Close</span>
           </div>
           <div class="theme-picker" id="timeoutActionPicker">
             <button class="theme-btn active" data-timeout-action="close">Close</button>
             <button class="theme-btn" data-timeout-action="discard">Sleep</button>
+            <button class="theme-btn" data-timeout-action="discard_then_close">2-Step</button>
           </div>
         </div>
 
-        <!-- Per-Site Timeouts Section -->
+        <div class="setting-row" id="closeAfterDiscardRow" style="display: none;">
+          <div class="setting-info">
+            <span class="setting-label">Close After Sleep</span>
+            <span class="setting-desc">Close sleeping tab after N minutes</span>
+          </div>
+          <div class="countdown-input-group">
+            <input type="number" id="popupCloseAfterDiscardInput" min="1" max="1440" value="30" class="countdown-number">
+            <span class="countdown-unit">min</span>
+          </div>
+        </div>
+
+        <!-- Per-Site Rules Section -->
         <div class="setting-section">
-          <h3 class="setting-section-title">Per-Site Timeouts</h3>
+          <h3 class="setting-section-title">Per-Site Rules</h3>
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-desc">Set custom timeout for specific sites</span>
+              <span class="setting-desc">Override timeout or close mode per domain</span>
             </div>
           </div>
 
@@ -545,18 +557,42 @@
       <div class="context-menu-items"></div>
     </div>
 
-    <!-- Per-Site Timeout Dialog -->
+    <!-- Per-Site Rule Dialog -->
     <div id="perSiteTimeoutDialog" class="modal" style="display: none;">
       <div class="modal-content">
-        <h3>Add Per-Site Timeout</h3>
+        <h3 id="siteRuleDialogTitle">Add Site Rule</h3>
         <div class="modal-body">
           <div class="input-group">
             <label for="sitePattern">Domain (e.g., example.com or *.example.com)</label>
             <input type="text" id="sitePattern" placeholder="example.com" />
           </div>
+
           <div class="input-group">
-            <label for="siteTimeout">Timeout (minutes)</label>
+            <label>Countdown Timer</label>
+            <div class="theme-picker modal-picker" id="siteTimeoutModePicker">
+              <button type="button" class="theme-btn active" data-site-timeout-mode="global">Global</button>
+              <button type="button" class="theme-btn" data-site-timeout-mode="custom">Custom</button>
+            </div>
+          </div>
+
+          <div class="input-group" id="siteCustomTimeoutGroup" style="display: none;">
+            <label for="siteTimeout">Custom Timeout (minutes)</label>
             <input type="number" id="siteTimeout" min="1" max="1440" value="30" />
+          </div>
+
+          <div class="input-group">
+            <label>When Timer Ends</label>
+            <div class="theme-picker modal-picker" id="siteActionModePicker">
+              <button type="button" class="theme-btn active" data-site-action-mode="global">Global</button>
+              <button type="button" class="theme-btn" data-site-action-mode="close">Close</button>
+              <button type="button" class="theme-btn" data-site-action-mode="discard">Sleep</button>
+              <button type="button" class="theme-btn" data-site-action-mode="discard_then_close">2-Step</button>
+            </div>
+          </div>
+
+          <div class="input-group" id="siteCloseAfterDiscardGroup" style="display: none;">
+            <label for="siteCloseAfterDiscard">Close After Sleep (minutes)</label>
+            <input type="number" id="siteCloseAfterDiscard" min="1" max="1440" value="30" />
           </div>
         </div>
         <div class="modal-actions">

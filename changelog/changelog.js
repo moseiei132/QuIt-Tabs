@@ -20,7 +20,11 @@ const RELEASES = [
       },
       {
         type: 'new',
-        text: '<strong>Sleep (Discard) Mode:</strong> Choose whether expired tabs are closed or put to sleep via Chrome Memory Saver (<code>When Timer Ends: Close | Sleep</code>), plus <code>Zzz</code> indicators for sleeping tabs.'
+        text: '<strong>Memory Saver &amp; 2-Step Mode:</strong> Choose <code>Close</code>, <code>Sleep</code> (Chrome Memory Saver discard), or <code>2-Step</code> (Sleep first, then Close after a configurable delay), complete with <code>Zzz</code> sleeping indicators.'
+      },
+      {
+        type: 'improved',
+        text: '<strong>Upgraded Per-Site Rules:</strong> Configure each domain with <code>Global</code> or <code>Custom</code> timer and independently override the action (<code>Global</code>, <code>Close</code>, <code>Sleep</code>, or <code>2-Step</code>), with click-to-edit support.'
       },
       {
         type: 'new',

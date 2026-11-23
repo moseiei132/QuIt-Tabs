@@ -2445,3 +2445,24 @@ svg use {
   margin-left: 0;
   margin-right: 4px;
 }
+
+/* Per-Site Rule modal pickers & clickable rows */
+.per-site-rule {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.per-site-rule:hover {
+  background: var(--macos-bg-tertiary);
+}
+
+.theme-picker.modal-picker {
+  width: 100%;
+  display: flex;
+}
+
+.theme-picker.modal-picker .theme-btn {
+  flex: 1;
+  text-align: center;
+  padding: 5px 4px;
+}

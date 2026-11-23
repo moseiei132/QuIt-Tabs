@@ -5,7 +5,7 @@ import {
     getSessionState,
     saveSessionState,
     addHistoryEntry,
-    getTimeoutForUrl
+    getRuleForUrl
 } from './utils/storage.js';
 import { parseQuitParams, cleanQuitParams, hasQuitParams } from './utils/quit-integration.js';
 
@@ -279,8 +279,9 @@ async function updateTabState(tab, isActive = false) {
 
     const existingState = tabStates[tab.id];
 
-    // Get timeout for this specific URL (checks per-site rules)
-    const countdown = await getTimeoutForUrl(tab.url, settings);
+    // Get effective timeout & action rule for this specific URL (checks per-site rules)
+    const rule = await getRuleForUrl(tab.url, settings);
+    const countdown = rule.timeout;
     const now = Date.now();
 
     // Set lastActiveTime only when tab becomes inactive
@@ -297,8 +298,11 @@ async function updateTabState(tab, isActive = false) {
     tabStates[tab.id] = {
         url: tab.url,
         lastActiveTime: lastActiveTime,
+        discardedAt: isActive ? null : (existingState?.discardedAt ?? null),
         countdown: countdown,
         initialCountdown: countdown,
+        timeoutAction: rule.timeoutAction,
+        closeAfterDiscard: rule.closeAfterDiscard,
         isPinned: tab.pinned || false,
         hasMedia: tab.audible || false,
         protected: existingState?.protected || false
@@ -327,11 +331,14 @@ async function toggleTabProtection(tabId) {
         const tab = await chrome.tabs.get(tabId);
         const isActive = isTabActiveInWindow(tab.windowId, tabId) &&
             (!settings.focusedWindowOnly || tab.windowId === focusedWindowId);
-        const newCountdown = await getTimeoutForUrl(tab.url, settings);
+        const rule = await getRuleForUrl(tab.url, settings);
 
         tabStates[tabId].lastActiveTime = isActive ? null : Date.now();
-        tabStates[tabId].countdown = newCountdown;
-        tabStates[tabId].initialCountdown = newCountdown;
+        tabStates[tabId].discardedAt = null;
+        tabStates[tabId].countdown = rule.timeout;
+        tabStates[tabId].initialCountdown = rule.timeout;
+        tabStates[tabId].timeoutAction = rule.timeoutAction;
+        tabStates[tabId].closeAfterDiscard = rule.closeAfterDiscard;
     }
 
     await saveTabStates(tabStates);
@@ -346,11 +353,14 @@ async function resetTabTimer(tabId) {
     const tab = await chrome.tabs.get(tabId);
     const isActive = isTabActiveInWindow(tab.windowId, tabId) &&
         (!settings.focusedWindowOnly || tab.windowId === focusedWindowId);
-    const newCountdown = await getTimeoutForUrl(tab.url, settings);
+    const rule = await getRuleForUrl(tab.url, settings);
 
     tabStates[tabId].lastActiveTime = isActive ? null : Date.now();
-    tabStates[tabId].countdown = newCountdown;
-    tabStates[tabId].initialCountdown = newCountdown;
+    tabStates[tabId].discardedAt = null;
+    tabStates[tabId].countdown = rule.timeout;
+    tabStates[tabId].initialCountdown = rule.timeout;
+    tabStates[tabId].timeoutAction = rule.timeoutAction;
+    tabStates[tabId].closeAfterDiscard = rule.closeAfterDiscard;
 
     await saveTabStates(tabStates);
     notifyPopupStateUpdated();
@@ -651,7 +661,10 @@ async function onAlarm(alarm) {
         }
     }
 
-    const tabsToProcess = [];
+    const tabsToDiscard = [];
+    const tabsToClose = [];
+    const globalTimeoutAction = settings.timeoutAction || 'close';
+    const globalCloseAfterDiscard = settings.closeAfterDiscard ?? 1800;
 
     for (const [tabId, state] of Object.entries(tabStates)) {
         const id = parseInt(tabId);
@@ -683,80 +696,118 @@ async function onAlarm(alarm) {
         // Pause countdown if media is playing and setting enabled
         if (state.hasMedia && settings.pauseOnMedia) continue;
 
-        // In discard mode, skip tabs already discarded/frozen
-        if (settings.timeoutAction === 'discard' && (tab.discarded || tab.frozen)) continue;
+        const tabTimeoutAction = state.timeoutAction || globalTimeoutAction;
+        const tabCloseAfterDiscard = state.closeAfterDiscard ?? globalCloseAfterDiscard;
 
-        // Calculate time inactive
-        const inactiveTime = Math.floor((now - state.lastActiveTime) / 1000);
-        const remaining = state.initialCountdown - inactiveTime;
-        state.countdown = Math.max(0, remaining);
+        if (tabTimeoutAction === 'discard_then_close') {
+            const isSleeping = Boolean(state.discardedAt || tab.discarded || tab.frozen);
+            if (isSleeping) {
+                if (!state.discardedAt) {
+                    state.discardedAt = now;
+                }
+                const sleepElapsed = Math.floor((now - state.discardedAt) / 1000);
+                const remaining = tabCloseAfterDiscard - sleepElapsed;
+                state.countdown = Math.max(0, remaining);
+                if (remaining <= 0) {
+                    tabsToClose.push(id);
+                }
+            } else {
+                const inactiveTime = Math.floor((now - state.lastActiveTime) / 1000);
+                const remaining = state.initialCountdown - inactiveTime;
+                state.countdown = Math.max(0, remaining);
+                if (remaining <= 0) {
+                    tabsToDiscard.push({ id, action: tabTimeoutAction, closeAfter: tabCloseAfterDiscard });
+                }
+            }
+        } else if (tabTimeoutAction === 'discard') {
+            // In sleep-only mode, skip tabs already discarded/frozen
+            if (tab.discarded || tab.frozen) continue;
 
-        if (remaining <= 0) {
-            tabsToProcess.push(id);
+            const inactiveTime = Math.floor((now - state.lastActiveTime) / 1000);
+            const remaining = state.initialCountdown - inactiveTime;
+            state.countdown = Math.max(0, remaining);
+            if (remaining <= 0) {
+                tabsToDiscard.push({ id, action: tabTimeoutAction, closeAfter: tabCloseAfterDiscard });
+            }
+        } else {
+            // Standard close mode
+            const inactiveTime = Math.floor((now - state.lastActiveTime) / 1000);
+            const remaining = state.initialCountdown - inactiveTime;
+            state.countdown = Math.max(0, remaining);
+            if (remaining <= 0) {
+                tabsToClose.push(id);
+            }
         }
     }
 
-    if (tabsToProcess.length > 0) {
-        if (settings.timeoutAction === 'discard') {
-            console.log('QuIt Tab Manager: Sleeping (discarding)', tabsToProcess.length, 'inactive tabs');
-            for (const tabId of tabsToProcess) {
-                try {
-                    await chrome.tabs.discard(tabId);
-                } catch (e) {
-                    console.warn('Error discarding tab:', tabId, e?.message || e);
+    // Step 1: Sleep (discard) tabs
+    if (tabsToDiscard.length > 0) {
+        console.log('QuIt Tab Manager: Sleeping (discarding)', tabsToDiscard.length, 'inactive tabs');
+        for (const { id: tabId, action, closeAfter } of tabsToDiscard) {
+            try {
+                await chrome.tabs.discard(tabId);
+                if (tabStates[tabId] && action === 'discard_then_close') {
+                    tabStates[tabId].discardedAt = now;
+                    tabStates[tabId].countdown = closeAfter;
                 }
+            } catch (e) {
+                console.warn('Error discarding tab:', tabId, e?.message || e);
             }
-        } else {
-            console.log('QuIt Tab Manager: Closing', tabsToProcess.length, 'inactive tabs');
-
-            const tabsByWindow = {};
-            allTabs.forEach(t => {
-                if (!tabsByWindow[t.windowId]) tabsByWindow[t.windowId] = [];
-                tabsByWindow[t.windowId].push(t.id);
-            });
-
-            const windowsToClose = [];
-            const tabsToRemove = [];
-
-            for (const tabId of tabsToProcess) {
-                const tab = tabsById.get(tabId);
-                if (!tab) continue;
-
-                try {
-                    const tabState = tabStates[tabId];
-                    await addHistoryEntry({
-                        url: tab.url || tabState?.url || '',
-                        title: tab.title || 'Untitled',
-                        favicon: tab.favIconUrl || '',
-                        closeReason: 'timeout',
-                        windowId: tab.windowId,
-                        groupId: tab.groupId !== -1 ? tab.groupId : null
-                    });
-                } catch (error) {
-                    console.error('Error recording timeout close to history:', error);
-                }
-
-                if (tabsByWindow[tab.windowId] && tabsByWindow[tab.windowId].length === 1) {
-                    windowsToClose.push(tab.windowId);
-                } else {
-                    tabsToRemove.push(tabId);
-                }
-            }
-
-            for (const windowId of windowsToClose) {
-                try {
-                    await chrome.windows.remove(windowId);
-                } catch (e) {
-                    console.error('Error closing window:', e);
-                }
-            }
-
-            if (tabsToRemove.length > 0) {
-                await chrome.tabs.remove(tabsToRemove);
-            }
-
-            tabsToProcess.forEach(id => delete tabStates[id]);
         }
+        notifyPopupStateUpdated();
+    }
+
+    // Step 2: Close tabs (either direct close mode or Stage 2 of 2-step mode)
+    if (tabsToClose.length > 0) {
+        console.log('QuIt Tab Manager: Closing', tabsToClose.length, 'inactive tabs');
+
+        const tabsByWindow = {};
+        allTabs.forEach(t => {
+            if (!tabsByWindow[t.windowId]) tabsByWindow[t.windowId] = [];
+            tabsByWindow[t.windowId].push(t.id);
+        });
+
+        const windowsToClose = [];
+        const tabsToRemove = [];
+
+        for (const tabId of tabsToClose) {
+            const tab = tabsById.get(tabId);
+            if (!tab) continue;
+
+            try {
+                const tabState = tabStates[tabId];
+                await addHistoryEntry({
+                    url: tab.url || tabState?.url || '',
+                    title: tab.title || 'Untitled',
+                    favicon: tab.favIconUrl || '',
+                    closeReason: 'timeout',
+                    windowId: tab.windowId,
+                    groupId: tab.groupId !== -1 ? tab.groupId : null
+                });
+            } catch (error) {
+                console.error('Error recording timeout close to history:', error);
+            }
+
+            if (tabsByWindow[tab.windowId] && tabsByWindow[tab.windowId].length === 1) {
+                windowsToClose.push(tab.windowId);
+            } else {
+                tabsToRemove.push(tabId);
+            }
+        }
+
+        for (const windowId of windowsToClose) {
+            try {
+                await chrome.windows.remove(windowId);
+            } catch (e) {
+                console.error('Error closing window:', e);
+            }
+        }
+
+        if (tabsToRemove.length > 0) {
+            await chrome.tabs.remove(tabsToRemove);
+        }
+
+        tabsToClose.forEach(id => delete tabStates[id]);
     }
 
     await saveTabStates(tabStates);
@@ -828,11 +879,14 @@ async function handleMessage(message, sender, sendResponse) {
                     const isUnprotectTabActive = isTabActiveInWindow(unprotectTab.windowId, message.tabId) &&
                         (!settings.focusedWindowOnly || unprotectTab.windowId === focusedWindowId);
 
-                    const newCountdown = await getTimeoutForUrl(unprotectTab.url, settings);
+                    const rule = await getRuleForUrl(unprotectTab.url, settings);
 
                     tabStates[message.tabId].lastActiveTime = isUnprotectTabActive ? null : Date.now();
-                    tabStates[message.tabId].countdown = newCountdown;
-                    tabStates[message.tabId].initialCountdown = newCountdown;
+                    tabStates[message.tabId].discardedAt = null;
+                    tabStates[message.tabId].countdown = rule.timeout;
+                    tabStates[message.tabId].initialCountdown = rule.timeout;
+                    tabStates[message.tabId].timeoutAction = rule.timeoutAction;
+                    tabStates[message.tabId].closeAfterDiscard = rule.closeAfterDiscard;
                     await saveTabStates(tabStates);
                     sendResponse({ success: true });
                 } else {

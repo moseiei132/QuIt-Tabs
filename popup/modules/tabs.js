@@ -69,18 +69,20 @@ function getTabStatusKey(tab) {
     );
     const isSleeping = Boolean(tab.discarded || tab.frozen);
 
+    const tabTimeoutAction = state.timeoutAction || settings.timeoutAction || 'close';
+
     if (state.protected) return 'protected:manual';
     if (isSpecialProtected) return 'protected:special';
     if (isPinnedProtected) return 'protected:pinned';
     if (isSharedGroupProtected) return 'protected:shared';
     if (isMediaProtected) return 'protected:media';
-    if (settings.timeoutAction === 'discard' && isSleeping) return 'sleeping';
+    if (tabTimeoutAction === 'discard' && isSleeping) return 'sleeping';
     if (state.lastActiveTime === null) return 'active';
 
     const inactiveTime = Math.floor((Date.now() - state.lastActiveTime) / 1000);
     const remaining = Math.max(0, (state.initialCountdown || state.countdown) - inactiveTime);
     // Group countdowns within 2 seconds as identical (Split View tabs leave at the same instant)
-    return `countdown:${Math.round(remaining / 2)}`;
+    return `countdown:${tabTimeoutAction}:${Math.round(remaining / 2)}`;
 }
 
 function getSplitMeta(tab, list, idx) {
@@ -340,6 +342,8 @@ export function renderTabItem(tab, groupColor = null, splitMeta = null) {
         const isSpecialProtected = isSpecialTab(tab) && !settings.autoCloseSpecial;
         const isMediaProtected = state.hasMedia && settings.pauseOnMedia;
 
+        const tabTimeoutAction = state.timeoutAction || settings.timeoutAction || 'close';
+
         if (state.protected || isMediaProtected || isPinnedProtected || isSpecialProtected || isSharedGroupProtected) {
             // Tab is protected - show shield with label (vertical stack)
             let label = 'Protected';
@@ -350,13 +354,18 @@ export function renderTabItem(tab, groupColor = null, splitMeta = null) {
             countdown = '<svg width="14" height="14" class="shield-icon"><use href="#icon-shield-filled"/></svg><span>' + label + '</span>';
             countdownLabel = '';
             countdownClass = 'protected';
-        } else if (settings.timeoutAction === 'discard' && isSleeping) {
+        } else if (tabTimeoutAction === 'discard' && isSleeping) {
             countdown = '<span class="time-value">Zzz</span><span>Sleep</span>';
             countdownLabel = '';
             countdownClass = 'sleeping';
         } else {
-            // Regular countdown - time with LEFT label
-            countdown = '<span class="time-value">' + formatTime(state.countdown) + '</span><span>Left</span>';
+            // Regular countdown - label reflects next action (Sleep vs Close vs Left)
+            const actionLabel = tabTimeoutAction === 'discard'
+                ? 'Sleep'
+                : tabTimeoutAction === 'discard_then_close'
+                    ? (state.discardedAt || isSleeping ? 'Close' : 'Sleep')
+                    : 'Left';
+            countdown = '<span class="time-value">' + formatTime(state.countdown) + '</span><span>' + actionLabel + '</span>';
             countdownLabel = '';
             if (state.countdown > 180) countdownClass = 'high';
             else if (state.countdown > 60) countdownClass = 'medium';
