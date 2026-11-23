@@ -745,15 +745,25 @@ async function onAlarm(alarm) {
         console.log('QuIt Tab Manager: Sleeping (discarding)', tabsToDiscard.length, 'inactive tabs');
         for (const { id: tabId, action, closeAfter } of tabsToDiscard) {
             try {
-                await chrome.tabs.discard(tabId);
-                if (tabStates[tabId] && action === 'discard_then_close') {
-                    tabStates[tabId].discardedAt = now;
-                    tabStates[tabId].countdown = closeAfter;
+                const prevState = tabStates[tabId];
+                const discardedTab = await chrome.tabs.discard(tabId);
+                const targetId = discardedTab?.id ?? tabId;
+
+                // Chrome replaces the tab ID when discarding — migrate state to the new tab ID
+                if (prevState && targetId !== tabId) {
+                    tabStates[targetId] = { ...prevState };
+                    delete tabStates[tabId];
+                }
+
+                if (tabStates[targetId] && action === 'discard_then_close') {
+                    tabStates[targetId].discardedAt = now;
+                    tabStates[targetId].countdown = closeAfter;
                 }
             } catch (e) {
                 console.warn('Error discarding tab:', tabId, e?.message || e);
             }
         }
+        await saveTabStates(tabStates);
         notifyPopupStateUpdated();
     }
 
@@ -940,6 +950,54 @@ async function handleMessage(message, sender, sendResponse) {
     }
 }
 
+// Handle tab ID replacement (e.g. Chrome Memory Saver or chrome.tabs.discard)
+async function onTabReplaced(addedTabId, removedTabId) {
+    await ensureReady();
+
+    if (tabStates[removedTabId]) {
+        const migrated = { ...tabStates[removedTabId] };
+        delete tabStates[removedTabId];
+
+        try {
+            const newTab = await chrome.tabs.get(addedTabId);
+            if ((newTab.discarded || newTab.frozen) && !migrated.discardedAt) {
+                migrated.discardedAt = Date.now();
+                const tabAction = migrated.timeoutAction || settings.timeoutAction || 'close';
+                if (tabAction === 'discard_then_close') {
+                    migrated.countdown = migrated.closeAfterDiscard ?? settings.closeAfterDiscard ?? 1800;
+                }
+            }
+        } catch {
+            // Tab may no longer exist
+        }
+
+        tabStates[addedTabId] = migrated;
+    } else if (!tabStates[addedTabId]) {
+        try {
+            const newTab = await chrome.tabs.get(addedTabId);
+            await updateTabState(newTab, false);
+        } catch {
+            // Ignore
+        }
+    }
+
+    // Update activeTabsByWindow if the replaced tab ID was tracked there
+    let sessionChanged = false;
+    for (const winId of Object.keys(activeTabsByWindow)) {
+        const ids = getActiveIdsForWindow(winId);
+        if (ids.includes(removedTabId)) {
+            activeTabsByWindow[winId] = ids.map(id => (id === removedTabId ? addedTabId : id));
+            sessionChanged = true;
+        }
+    }
+
+    await saveTabStates(tabStates);
+    if (sessionChanged) {
+        await persistSession();
+    }
+    notifyPopupStateUpdated();
+}
+
 // ============================================================================
 // Set up event listeners
 // ============================================================================
@@ -948,6 +1006,7 @@ chrome.tabs.onActivated.addListener(onTabActivated);
 chrome.tabs.onUpdated.addListener(onTabUpdated);
 chrome.tabs.onCreated.addListener(onTabCreated);
 chrome.tabs.onRemoved.addListener(onTabRemoved);
+chrome.tabs.onReplaced.addListener(onTabReplaced);
 chrome.windows.onFocusChanged.addListener(onWindowFocusChanged);
 chrome.alarms.onAlarm.addListener(onAlarm);
 

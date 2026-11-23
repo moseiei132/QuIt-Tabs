@@ -63,8 +63,12 @@ async function init() {
             await refreshTabStates();
         });
         chrome.tabs.onRemoved.addListener(async () => {
-            await loadAllTabs();
             await refreshTabStates();
+            await loadAllTabs();
+        });
+        chrome.tabs.onReplaced.addListener(async () => {
+            await refreshTabStates();
+            await loadAllTabs();
         });
         chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
             // Reload if title, URL, Split View, or sleep/freeze status changed
@@ -75,8 +79,8 @@ async function init() {
                 changeInfo.discarded !== undefined ||
                 changeInfo.frozen !== undefined
             ) {
-                await loadAllTabs();
                 await refreshTabStates();
+                await loadAllTabs();
                 
                 // If current tab updated, update our reference
                 import('./modules/state.js').then(async ({ currentTab, setCurrentTab }) => {
@@ -110,12 +114,12 @@ async function init() {
             chrome.tabGroups.onRemoved?.addListener(refreshGroups);
         }
 
-        // Listen for state updates from background (context menus, shortcuts, split view, rules)
+        // Listen for state updates from background (context menus, shortcuts, split view, rules, discard)
         chrome.runtime.onMessage.addListener(async (message) => {
             if (message.type === 'stateUpdated') {
                 await refreshTabStates();
+                await loadAllTabs();
                 updateCurrentTab();
-                renderTabsList();
             }
         });
     } catch (error) {
