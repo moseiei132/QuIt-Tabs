@@ -397,6 +397,18 @@ async function onTabActivated(activeInfo) {
     // Update currently visible active tabs for this window
     activeTabsByWindow[windowId] = nextActiveIds;
 
+    // Refresh focusedWindowId in case onActivated fired before onFocusChanged
+    try {
+        const lastFocused = await chrome.windows.getLastFocused();
+        if (lastFocused?.focused) {
+            focusedWindowId = lastFocused.id;
+        } else if (focusedWindowId === null) {
+            focusedWindowId = windowId;
+        }
+    } catch {
+        if (focusedWindowId === null) focusedWindowId = windowId;
+    }
+
     // Mark new active tab(s) as truly active if this window is focused
     const isTrulyActive = !settings.focusedWindowOnly || windowId === focusedWindowId;
     for (const id of nextActiveIds) {
@@ -443,6 +455,7 @@ async function onWindowFocusChanged(newFocusedWindowId) {
 
     await saveTabStates(tabStates);
     await persistSession();
+    notifyPopupStateUpdated();
 }
 
 async function onTabUpdated(tabId, changeInfo, tab) {
@@ -580,7 +593,8 @@ async function handleQuitIntegration(tabId, url, tab) {
 
 async function onTabCreated(tab) {
     await ensureReady();
-    await updateTabState(tab, false);
+    const isActive = Boolean(tab.active) && (!settings.focusedWindowOnly || focusedWindowId === null || tab.windowId === focusedWindowId);
+    await updateTabState(tab, isActive);
     await saveTabStates(tabStates);
 }
 
@@ -647,8 +661,26 @@ async function onAlarm(alarm) {
     const allTabs = await chrome.tabs.query({});
     const tabsById = new Map(allTabs.map(t => [t.id, t]));
 
+    // Keep focusedWindowId in sync with Chrome's actual focused window
+    try {
+        const lastFocused = await chrome.windows.getLastFocused();
+        if (lastFocused?.focused) {
+            focusedWindowId = lastFocused.id;
+        }
+    } catch {
+        // Ignore if no window exists
+    }
+
     // Determine visible active tabs (including Split View partners)
     const trulyActiveTabIds = getVisibleActiveTabIds(allTabs, focusedWindowId);
+
+    // Ensure every truly active tab has lastActiveTime === null (never carries a stale timer)
+    for (const activeId of trulyActiveTabIds) {
+        if (tabStates[activeId]) {
+            tabStates[activeId].lastActiveTime = null;
+            tabStates[activeId].discardedAt = null;
+        }
+    }
 
     // Identify Shared Tab Groups (Chrome 2025/2026)
     let sharedGroupIds = new Set();

@@ -225,6 +225,7 @@ export function updateCountdowns() {
             tab && settings.protectSharedGroups && tab.groupId !== -1 && tabGroups[tab.groupId]?.shared
         );
         const isSleeping = Boolean(tab && (tab.discarded || tab.frozen));
+        item.classList.toggle('sleeping-tab', isSleeping);
 
         const tabTimeoutAction = state.timeoutAction || settings.timeoutAction || 'close';
         const tabCloseAfterDiscard = state.closeAfterDiscard ?? settings.closeAfterDiscard ?? 1800;
@@ -264,7 +265,7 @@ export function updateCountdowns() {
         }
 
         if (tabTimeoutAction === 'discard' && isSleeping) {
-            timeEl.innerHTML = '<span class="time-value">Zzz</span><span>Sleep</span>';
+            timeEl.innerHTML = '<svg width="14" height="14" class="sleep-icon"><use href="#icon-moon"/></svg><span>Sleep</span>';
             countdownEl.className = 'countdown sleeping';
             return;
         }
@@ -292,11 +293,18 @@ export function updateCountdowns() {
 
         timeEl.innerHTML = '<span class="time-value">' + formatTime(remaining) + '</span><span>' + actionLabel + '</span>';
 
-        // Update color
+        // Update color (calm Indigo for Sleep; Green -> Amber -> Red reserved for Close/Left)
         countdownEl.className = 'countdown';
-        if (remaining > 180) countdownEl.classList.add('high');
-        else if (remaining > 60) countdownEl.classList.add('medium');
-        else countdownEl.classList.add('low');
+        if (actionLabel === 'Sleep') {
+            countdownEl.classList.add('sleep-pending');
+            if (remaining <= 60) countdownEl.classList.add('sleep-soon');
+        } else if (remaining > 180) {
+            countdownEl.classList.add('high');
+        } else if (remaining > 60) {
+            countdownEl.classList.add('medium');
+        } else {
+            countdownEl.classList.add('low');
+        }
     });
 }
 

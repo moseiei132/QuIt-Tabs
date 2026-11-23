@@ -2,9 +2,40 @@ import { getSettings } from '../utils/storage.js';
 
 const RELEASES = [
   {
+    version: '1.6.1',
+    headline: '2-Step Sleep, Per-Site Rules & Visual Polish',
+    summary: 'Refined Memory Saver workflows, flexible per-site action overrides, and clearer visual hierarchy between sleeping and closing tabs.',
+    changes: [
+      {
+        type: 'new',
+        text: '<strong>2-Step Mode (Sleep → Close):</strong> Put inactive tabs to sleep first, then automatically close them after a configurable <code>Close After Sleep</code> delay.'
+      },
+      {
+        type: 'improved',
+        text: '<strong>Upgraded Per-Site Rules:</strong> Configure each domain with <code>Global</code> or <code>Custom</code> timer and independently override the action (<code>Global</code>, <code>Close</code>, <code>Sleep</code>, or <code>2-Step</code>), with click-to-edit support.'
+      },
+      {
+        type: 'improved',
+        text: '<strong>Sleep Visual Hierarchy:</strong> Chrome-native dashed favicon ring with crescent moon badge and calm macOS Indigo countdowns for <code>SLEEP</code>, reserving red strictly for <code>CLOSE</code>.'
+      },
+      {
+        type: 'improved',
+        text: '<strong>Cleaner Split View Rows:</strong> Deduplicated identical Active/Countdown status across Split View pairs and auto-moved non-adjacent tabs when triggering <code>Split with Current Tab</code>.'
+      },
+      {
+        type: 'fix',
+        text: '<strong>Discarded Tab ID Migration &amp; Active Tab Timer Fix:</strong> Track tab ID replacements on <code>chrome.tabs.discard()</code> / <code>onReplaced</code> so 2-Step timers count down reliably, and prevent active tabs from flashing stale timers.'
+      },
+      {
+        type: 'fix',
+        text: '<strong>Context Menu Startup Guard:</strong> Prevented duplicate <code>contextMenus</code> ID warnings during concurrent service worker initialization.'
+      }
+    ]
+  },
+  {
     version: '1.6.0',
     headline: 'Chrome Latest Support & Full Changelog',
-    summary: 'Built for modern Chrome workflows — native Split View awareness, Tab Strip right-click actions, Shared Tab Group protection, Sleep/Discard mode, and MV3 reliability improvements.',
+    summary: 'Built for modern Chrome workflows — native Split View awareness, Tab Strip right-click actions, Shared Tab Group protection, Sleep mode, and MV3 reliability improvements.',
     changes: [
       {
         type: 'new',
@@ -20,11 +51,7 @@ const RELEASES = [
       },
       {
         type: 'new',
-        text: '<strong>Memory Saver &amp; 2-Step Mode:</strong> Choose <code>Close</code>, <code>Sleep</code> (Chrome Memory Saver discard), or <code>2-Step</code> (Sleep first, then Close after a configurable delay), complete with <code>Zzz</code> sleeping indicators.'
-      },
-      {
-        type: 'improved',
-        text: '<strong>Upgraded Per-Site Rules:</strong> Configure each domain with <code>Global</code> or <code>Custom</code> timer and independently override the action (<code>Global</code>, <code>Close</code>, <code>Sleep</code>, or <code>2-Step</code>), with click-to-edit support.'
+        text: '<strong>Memory Saver Sleep Mode:</strong> Choose whether expired tabs are closed or put to sleep via Chrome Memory Saver (<code>chrome.tabs.discard</code>).'
       },
       {
         type: 'new',

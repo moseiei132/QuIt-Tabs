@@ -120,6 +120,7 @@ async function init() {
                 await refreshTabStates();
                 await loadAllTabs();
                 updateCurrentTab();
+                updateCountdowns();
             }
         });
     } catch (error) {

@@ -11,6 +11,7 @@
   --macos-red: #ff3b30;
   --macos-yellow: #ff9500;
   --macos-green: #34c759;
+  --macos-indigo: #5856d6;
   --macos-shadow: rgba(0, 0, 0, 0.1);
   --macos-shadow-strong: rgba(0, 0, 0, 0.15);
 
@@ -37,6 +38,7 @@
     --macos-divider: #48484a;
     --macos-accent: #0a84ff;
     --macos-accent-hover: #409cff;
+    --macos-indigo: #7d7aff;
     --macos-shadow: rgba(0, 0, 0, 0.3);
     --macos-shadow-strong: rgba(0, 0, 0, 0.5);
 
@@ -63,6 +65,7 @@
   --macos-divider: #48484a;
   --macos-accent: #0a84ff;
   --macos-accent-hover: #409cff;
+  --macos-indigo: #7d7aff;
   --macos-shadow: rgba(0, 0, 0, 0.3);
   --macos-shadow-strong: rgba(0, 0, 0, 0.5);
 
@@ -497,6 +500,16 @@ svg use {
 
 .countdown.low .countdown-time {
   color: var(--macos-red);
+}
+
+.countdown.sleep-pending .countdown-time {
+  color: var(--macos-indigo);
+  opacity: 0.85;
+}
+
+.countdown.sleep-pending.sleep-soon .countdown-time {
+  color: var(--macos-indigo);
+  opacity: 1;
 }
 
 .countdown.excluded .countdown-time {
@@ -2400,18 +2413,86 @@ svg use {
   margin-left: 6px;
 }
 
-.badge-sleeping {
-  background: var(--macos-bg-tertiary);
-  color: var(--macos-text-secondary);
-  font-size: 9px;
-  font-weight: 600;
-  padding: 1px 5px;
-  border-radius: 4px;
+/* Sleeping / Discarded Tab — Chrome-native dashed ring + subtle moon badge on favicon */
+.tab-item.sleeping-tab .tab-favicon {
+  position: relative;
+  border: 1.5px dashed var(--macos-text-secondary);
+  border-radius: 50%;
+  padding: 2px;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
 }
 
-.countdown.sleeping {
-  color: var(--macos-text-secondary);
-  opacity: 0.85;
+.tab-item.sleeping-tab .tab-favicon img,
+.tab-item.sleeping-tab .tab-favicon > svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.65;
+  transition: opacity 0.15s ease;
+}
+
+.sleep-moon-dot {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--macos-bg);
+  color: var(--macos-indigo);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 1px var(--macos-divider);
+  pointer-events: none;
+}
+
+.tab-item.active .sleep-moon-dot {
+  background: var(--macos-accent);
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+
+.tab-item.sleeping-tab .tab-title,
+.tab-item.sleeping-tab .tab-url {
+  opacity: 0.68;
+  transition: opacity 0.15s ease;
+}
+
+.tab-item.sleeping-tab:hover .tab-favicon img,
+.tab-item.sleeping-tab:hover .tab-favicon > svg,
+.tab-item.sleeping-tab:hover .tab-title,
+.tab-item.sleeping-tab:hover .tab-url {
+  opacity: 1;
+}
+
+.tab-item.active.sleeping-tab .tab-favicon {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.countdown.sleeping .countdown-time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--macos-indigo);
+  opacity: 0.9;
+}
+
+.countdown.sleeping .sleep-icon {
+  color: inherit;
+  width: 14px;
+  height: 14px;
+  opacity: 0.9;
 }
 
 /* Version / What's New button in Settings Extension Info */

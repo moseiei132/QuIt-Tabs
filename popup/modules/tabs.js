@@ -354,8 +354,13 @@ export function renderTabItem(tab, groupColor = null, splitMeta = null) {
             countdown = '<svg width="14" height="14" class="shield-icon"><use href="#icon-shield-filled"/></svg><span>' + label + '</span>';
             countdownLabel = '';
             countdownClass = 'protected';
+        } else if (state.lastActiveTime === null) {
+            // Tab is active (or visible Split View partner) - show eye icon immediately
+            countdown = '<svg width="14" height="14" class="active-icon"><use href="#icon-eye"/></svg><span>Active</span>';
+            countdownLabel = '';
+            countdownClass = 'active';
         } else if (tabTimeoutAction === 'discard' && isSleeping) {
-            countdown = '<span class="time-value">Zzz</span><span>Sleep</span>';
+            countdown = '<svg width="14" height="14" class="sleep-icon"><use href="#icon-moon"/></svg><span>Sleep</span>';
             countdownLabel = '';
             countdownClass = 'sleeping';
         } else {
@@ -367,18 +372,21 @@ export function renderTabItem(tab, groupColor = null, splitMeta = null) {
                     : 'Left';
             countdown = '<span class="time-value">' + formatTime(state.countdown) + '</span><span>' + actionLabel + '</span>';
             countdownLabel = '';
-            if (state.countdown > 180) countdownClass = 'high';
-            else if (state.countdown > 60) countdownClass = 'medium';
-            else countdownClass = 'low';
+            if (actionLabel === 'Sleep') {
+                countdownClass = state.countdown <= 60 ? 'sleep-pending sleep-soon' : 'sleep-pending';
+            } else if (state.countdown > 180) {
+                countdownClass = 'high';
+            } else if (state.countdown > 60) {
+                countdownClass = 'medium';
+            } else {
+                countdownClass = 'low';
+            }
         }
     }
 
     const badges = [];
     if (tab.pinned) {
         badges.push('<span class="badge badge-pinned">Pinned</span>');
-    }
-    if (isSleeping) {
-        badges.push('<span class="badge badge-sleeping" title="Tab is sleeping / discarded">Zzz</span>');
     }
 
     const title = tab.title || 'Untitled';
@@ -416,8 +424,8 @@ export function renderTabItem(tab, groupColor = null, splitMeta = null) {
 
     return `
     <div class="tab-row ${splitPosition ? `split-row-${splitPosition}` : ''}">
-      <div class="tab-item ${isActive || isSplitPartnerActive ? 'active' : ''} ${splitClasses} ${quitTargetClass} ${isSelected ? 'selected' : ''}" data-tab-id="${tab.id}" data-window-id="${tab.windowId}" data-group-id="${tab.groupId || ''}" data-split-view-id="${hasSplitView(tab) ? tab.splitViewId : ''}" data-split-partner-id="${splitMeta?.partnerTabId || ''}" ${groupIndicatorStyle}>
-        <div class="tab-favicon">${favicon}</div>
+      <div class="tab-item ${isActive || isSplitPartnerActive ? 'active' : ''} ${isSleeping ? 'sleeping-tab' : ''} ${splitClasses} ${quitTargetClass} ${isSelected ? 'selected' : ''}" data-tab-id="${tab.id}" data-window-id="${tab.windowId}" data-group-id="${tab.groupId || ''}" data-split-view-id="${hasSplitView(tab) ? tab.splitViewId : ''}" data-split-partner-id="${splitMeta?.partnerTabId || ''}" ${groupIndicatorStyle}>
+        <div class="tab-favicon">${favicon}${isSleeping ? '<span class="sleep-moon-dot" title="Sleeping tab"><svg width="8" height="8"><use href="#icon-moon"/></svg></span>' : ''}</div>
         <div class="tab-details">
           <div class="tab-title">${escapeHtml(title)}</div>
           <div class="tab-url">${escapeHtml(displayUrl)}</div>
